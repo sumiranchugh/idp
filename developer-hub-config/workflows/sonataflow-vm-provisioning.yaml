@@ -22,9 +22,6 @@ spec:
       then provisions a RHEL VM via Ansible Automation Platform.
     annotations:
       - 'workflow-type:infrastructure'
-    dataInputSchema:
-      schema: schemas/vm-request.input-schema.json
-      failOnValidationErrors: false
 
     functions:
       - name: createSNIncident
