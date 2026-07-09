@@ -3,6 +3,12 @@
   hosts: localhost
   gather_facts: false
 
+  module_defaults:
+    group/kubernetes.core.k8s:
+      host: "{{ lookup('env', 'K8S_AUTH_HOST') | default('https://kubernetes.default.svc', true) }}"
+      api_key: "{{ lookup('env', 'K8S_AUTH_API_KEY') }}"
+      validate_certs: "{{ lookup('env', 'K8S_AUTH_VERIFY_SSL') | default(false, true) }}"
+
   vars:
     # VM Configuration (will be overridden by AAP survey/Developer Hub)
     vm_name: "{{ vm_name | default('rhel-vm-' + lookup('pipe', 'date +%s')) }}"
