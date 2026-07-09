@@ -58,10 +58,10 @@
               resources:
                 requests:
                   storage: "{{ vm_disk_size }}"
-            source:
-              pvc:
-                namespace: openshift-virtualization-os-images
-                name: "{{ rhel_image_map[rhel_version] }}"
+            sourceRef:
+              kind: DataSource
+              namespace: openshift-virtualization-os-images
+              name: "{{ rhel_image_map[rhel_version] }}"
       register: datavolume_created
 
     - name: Wait for DataVolume to be ready
