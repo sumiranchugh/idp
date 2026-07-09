@@ -130,12 +130,13 @@ spec:
   steps:
     - id: trigger-aap
       name: Submit VM Provisioning Request to Ansible
-      action: http:backstage:request
+      action: roadiehq:utils:http:request
       input:
         method: POST
-        path: /proxy/aap/api/controller/v2/job_templates/9/launch/
+        url: https://aap-platform-ansible-automation-platform.apps.cluster-k5zwd.dyn.redhatworkshops.io/api/controller/v2/job_templates/9/launch/
         headers:
           content-type: application/json
+          Authorization: Bearer Zhpi9lgBdCqNDF0ScYT7M5FyT0AX5e
         body:
           extra_vars:
             vm_name: ${{ parameters.vm_name }}
