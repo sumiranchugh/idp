@@ -142,72 +142,68 @@ spec:
         > VM provisioning takes approximately 5–10 minutes after approval.
 
   steps:
-    - id: create-sn-request
-      name: Create ServiceNow Change Request
-      action: roadiehq:utils:http:request
+    - id: create-sn-incident
+      name: Create ServiceNow VM Request (Incident)
+      action: servicenow:now:table:createRecord
       input:
-        method: POST
-        url: https://dev423121.service-now.com/api/now/table/sc_request
-        headers:
-          Content-Type: application/json
-          Accept: application/json
-          # Auth injected by RHDH proxy — no credentials in template
-        body:
+        tableName: incident
+        requestBody:
           short_description: "VM Request: ${{ parameters.vm_name }} (RHEL ${{ parameters.rhel_version }})"
           description: |
             VM Provisioning Request from Red Hat Developer Hub
 
             VM Specification:
-            - Name:       ${{ parameters.vm_name }}
-            - Namespace:  ${{ parameters.vm_namespace }}
-            - RHEL:       ${{ parameters.rhel_version }}
-            - CPUs:       ${{ parameters.vm_cpus }}
-            - Memory:     ${{ parameters.vm_memory }}
-            - Disk:       ${{ parameters.vm_disk_size }}
-            - User:       ${{ parameters.vm_user }}
+              Name:          ${{ parameters.vm_name }}
+              Namespace:     ${{ parameters.vm_namespace }}
+              RHEL Version:  ${{ parameters.rhel_version }}
+              CPUs:          ${{ parameters.vm_cpus }}
+              Memory:        ${{ parameters.vm_memory }}
+              Disk:          ${{ parameters.vm_disk_size }}
+              User:          ${{ parameters.vm_user }}
 
             Business Justification:
             ${{ parameters.justification }}
 
-            Requested via: Red Hat Developer Hub
-          category: "Infrastructure"
+            Submitted via: Red Hat Developer Hub
+          category: infrastructure
           impact: "3"
           urgency: "3"
           state: "1"
+          approval: requested
           u_vm_name: ${{ parameters.vm_name }}
           u_vm_namespace: ${{ parameters.vm_namespace }}
-          u_rhel_version: "${{ parameters.rhel_version }}"
+          u_vm_rhel_version: "${{ parameters.rhel_version }}"
           u_vm_cpus: "${{ parameters.vm_cpus }}"
           u_vm_memory: ${{ parameters.vm_memory }}
           u_vm_disk_size: ${{ parameters.vm_disk_size }}
           u_vm_user: ${{ parameters.vm_user }}
-          u_ssh_public_key: "${{ parameters.ssh_public_key | default('') }}"
-          u_requested_from: "Red Hat Developer Hub"
+          u_aap_triggered: "false"
 
     - id: log-ticket
       name: Log ServiceNow Ticket
       action: debug:log
       input:
         message: |
-          ServiceNow request created!
-          Request Number: ${{ steps['create-sn-request'].output.body.result.number }}
-          Request sys_id:  ${{ steps['create-sn-request'].output.body.result.sys_id }}
+          ServiceNow incident created!
+          sys_id: ${{ steps['create-sn-incident'].output.result.sys_id }}
+          Number: ${{ steps['create-sn-incident'].output.result.number }}
           State: Awaiting manager approval
 
   output:
     links:
       - title: View Request in ServiceNow
-        url: https://dev423121.service-now.com/sc_request.do?sys_id=${{ steps['create-sn-request'].output.body.result.sys_id }}
+        url: https://dev423121.service-now.com/incident.do?sys_id=${{ steps['create-sn-incident'].output.result.sys_id }}
         icon: dashboard
       - title: ServiceNow Service Portal
         url: https://dev423121.service-now.com/sp
         icon: dashboard
     text:
-      - title: Request Submitted Successfully
+      - title: Request Submitted for Approval
         content: |
-          ## VM Request Submitted for Approval
+          ## VM Request Submitted
 
-          **Request Number:** ${{ steps['create-sn-request'].output.body.result.number }}
+          **Incident:** ${{ steps['create-sn-incident'].output.result.number }}
+          **Status:** Awaiting manager approval
 
           | Parameter | Value |
           |-----------|-------|
@@ -218,11 +214,11 @@ spec:
           | Disk | ${{ parameters.vm_disk_size }} |
           | Namespace | ${{ parameters.vm_namespace }} |
 
-          ### What happens next?
+          ### What happens next
 
-          1. ✅ **Request logged** in ServiceNow
-          2. 📧 **Your manager** will receive an approval email shortly
-          3. 🤖 **On approval**, Ansible Automation Platform will provision your VM automatically
-          4. 📬 **You will receive** an email with SSH access details when the VM is ready (~5-10 min after approval)
+          1. ServiceNow routes the request to your manager for approval
+          2. On approval, ServiceNow automatically triggers RHDH
+          3. RHDH runs the provisioning workflow via Ansible Automation Platform
+          4. VM is ready in ~5-10 minutes — you'll receive an email with SSH access details
 
-          > To check status, click **View Request in ServiceNow** above.
+          > Track status: click **View Request in ServiceNow** above
