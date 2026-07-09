@@ -143,10 +143,10 @@ spec:
 
   steps:
     - id: create-sn-incident
-      name: Create ServiceNow Approval Request
+      name: Create ServiceNow Change Request
       action: servicenow:now:table:createRecord
       input:
-        tableName: incident
+        tableName: change_request
         requestBody:
           short_description: "VM Request: ${{ parameters.vm_name }} (RHEL ${{ parameters.rhel_version }})"
           description: |
@@ -161,9 +161,11 @@ spec:
             User: ${{ parameters.vm_user }}
 
             Justification: ${{ parameters.justification }}
-          category: infrastructure
-          approval: requested
-          state: "1"
+          type: normal
+          category: Other
+          priority: "4"
+          risk: "3"
+          impact: "3"
           u_vm_name: ${{ parameters.vm_name }}
           u_vm_namespace: ${{ parameters.vm_namespace }}
           u_vm_rhel_version: "${{ parameters.rhel_version }}"
@@ -172,6 +174,17 @@ spec:
           u_vm_disk_size: ${{ parameters.vm_disk_size }}
           u_vm_user: ${{ parameters.vm_user }}
           u_aap_triggered: "false"
+
+    - id: add-approver
+      name: Assign Manager Approver in ServiceNow
+      action: servicenow:now:table:createRecord
+      input:
+        tableName: sysapproval_approver
+        requestBody:
+          sysapproval: ${{ steps['create-sn-incident'].output.result.sys_id }}
+          approver: 6816f79cc0a8016401c5a33be04be441
+          source_table: change_request
+          state: requested
 
     - id: start-workflow
       name: Start Orchestrator Approval Workflow
@@ -195,15 +208,15 @@ spec:
       - title: Track Workflow in Orchestrator
         url: ${{ steps['start-workflow'].output.instanceUrl }}
         icon: dashboard
-      - title: View Request in ServiceNow
-        url: https://dev423121.service-now.com/incident.do?sys_id=${{ steps['create-sn-incident'].output.result.sys_id }}
+      - title: Approve in ServiceNow
+        url: https://dev423121.service-now.com/change_request.do?sys_id=${{ steps['create-sn-incident'].output.result.sys_id }}
         icon: dashboard
     text:
       - title: Request Submitted for Approval
         content: |
           ## VM Request Submitted
 
-          **ServiceNow Incident:** ${{ steps['create-sn-incident'].output.result.number }}
+          **ServiceNow Change Request:** ${{ steps['create-sn-incident'].output.result.number }}
           **Status:** Awaiting manager approval
 
           | Parameter | Value |

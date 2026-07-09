@@ -21,13 +21,16 @@ spec:
     id: vm-provisioning-approval
     version: '1.0'
     specVersion: '0.8'
-    name: RHEL VM Provisioning with ServiceNow Approval
-    description: Tracks VM provisioning request through ServiceNow approval and AAP provisioning
+    name: RHEL VM Provisioning — ServiceNow Approval
+    description: >
+      Self-service RHEL VM provisioning with manager approval via ServiceNow.
+      Submitted through Red Hat Developer Hub and orchestrated by Ansible Automation Platform.
     annotations:
       - 'workflow-type:infrastructure'
+      - 'workflow-category:vm-provisioning'
 
     functions:
-      - name: mergeData
+      - name: setStatus
         type: expression
         operation: '. + {}'
 
@@ -39,63 +42,75 @@ spec:
           - contextAttributeName: snincidentsysid
 
     states:
-      - name: TrackRequest
+      - name: Request Received
         type: operation
         actions:
-          - name: set-pending-status
+          - name: initialise
             functionRef:
-              refName: mergeData
+              refName: setStatus
               arguments:
                 workflow_status: pending_approval
             actionDataFilter:
-              results: .statusUpdate
-              toStateData: .statusUpdate
+              results: .init
+              toStateData: .init
         stateDataFilter:
-          output: '${ . + {workflow_status: "pending_approval", sn_sys_id: .sn_sys_id, sn_number: .sn_number} }'
-        transition: WaitForApproval
+          output: >
+            ${ . + {
+              workflow_status: "Pending Manager Approval",
+              vm: .vm_name,
+              namespace: .vm_namespace,
+              sn_change_request: .sn_number
+            } }
+        transition: Awaiting Manager Approval
 
-      - name: WaitForApproval
+      - name: Awaiting Manager Approval
         type: callback
         action:
-          name: set-waiting
+          name: mark-waiting
           functionRef:
-            refName: mergeData
+            refName: setStatus
             arguments:
-              workflow_status: awaiting_manager_approval
+              workflow_status: Awaiting Manager Approval in ServiceNow
         eventRef: vmApprovalDecision
         eventDataFilter:
-          data: '${ {approved: .approved, approvedBy: (.approvedBy // "unknown"), rejectionReason: (.rejectionReason // "")} }'
+          data: '${ {approved: .approved, approvedBy: (.approvedBy // "unknown")} }'
           toStateData: .approvalResult
-        transition: CheckDecision
+        transition: Evaluate Approval Decision
 
-      - name: CheckDecision
+      - name: Evaluate Approval Decision
         type: switch
         dataConditions:
           - condition: '${ .approvalResult.approved == true }'
-            transition: ProvisioningApproved
-            name: Approved
+            transition: Provisioning VM
+            name: Approved by Manager
           - condition: '${ .approvalResult.approved == false }'
-            transition: ProvisioningRejected
-            name: Rejected
+            transition: Request Rejected
+            name: Rejected by Manager
         defaultCondition:
-          transition: ProvisioningRejected
+          transition: Request Rejected
 
-      - name: ProvisioningApproved
+      - name: Provisioning VM
         type: inject
         data:
-          workflow_status: approved_provisioning_started
-          message: VM provisioning approved and started via AAP
+          workflow_status: Approved — VM Provisioning Started via AAP
         stateDataFilter:
-          output: '${ . + {workflow_status: "approved_provisioning_started"} }'
+          output: >
+            ${ . + {
+              workflow_status: "Approved — VM Provisioning Started",
+              approved_by: .approvalResult.approvedBy
+            } }
         end:
           terminate: true
 
-      - name: ProvisioningRejected
+      - name: Request Rejected
         type: inject
         data:
-          workflow_status: rejected
-          message: VM provisioning request was rejected
+          workflow_status: Rejected by Manager
         stateDataFilter:
-          output: '${ . + {workflow_status: "rejected"} }'
+          output: >
+            ${ . + {
+              workflow_status: "Rejected by Manager",
+              rejected_by: .approvalResult.approvedBy
+            } }
         end:
           terminate: true
