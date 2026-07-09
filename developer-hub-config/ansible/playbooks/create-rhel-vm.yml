@@ -41,85 +41,10 @@
           metadata:
             name: "{{ vm_namespace }}"
 
-    - name: Create DataVolume for VM disk
+    - name: Create VirtualMachine with DataVolumeTemplate
       kubernetes.core.k8s:
         state: present
         definition:
-          apiVersion: cdi.kubevirt.io/v1beta1
-          kind: DataVolume
-          metadata:
-            name: "{{ vm_name }}-disk"
-            namespace: "{{ vm_namespace }}"
-          spec:
-            storage:
-              storageClassName: "{{ storage_class }}"
-              accessModes:
-                - ReadWriteOnce
-              resources:
-                requests:
-                  storage: "{{ vm_disk_size }}"
-            sourceRef:
-              kind: DataSource
-              namespace: openshift-virtualization-os-images
-              name: "{{ rhel_image_map[rhel_version] }}"
-      register: datavolume_created
-
-    # Note: DataVolume will populate when VM starts (WaitForFirstConsumer binding mode)
-    # Skipping wait - VM creation will trigger the PVC binding and population
-
-    - name: Create cloud-init secret
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: "{{ vm_name }}-cloudinit"
-            namespace: "{{ vm_namespace }}"
-          type: Opaque
-          stringData:
-            userdata: |
-              #cloud-config
-              user: {{ vm_user }}
-              password: {{ vm_password }}
-              chpasswd: { expire: False }
-              {% if ssh_public_key != '' %}
-              ssh_authorized_keys:
-                - {{ ssh_public_key }}
-              {% endif %}
-              # Enable SSH
-              ssh_pwauth: true
-              disable_root: false
-
-              # Update packages
-              package_update: true
-              package_upgrade: false
-
-              # Install basic packages
-              packages:
-                - vim
-                - git
-                - curl
-                - wget
-                - net-tools
-
-              # Set timezone
-              timezone: UTC
-
-              # Set hostname
-              hostname: {{ vm_name }}
-              fqdn: {{ vm_name }}.{{ vm_namespace }}.svc.cluster.local
-
-              # Final message
-              final_message: "RHEL VM {{ vm_name }} is ready!"
-
-    - name: Set environment label
-      set_fact:
-        environment_label: "{{ environment | default('development', true) }}"
-
-    - name: Build VirtualMachine definition
-      set_fact:
-        vm_definition:
           apiVersion: kubevirt.io/v1
           kind: VirtualMachine
           metadata:
@@ -127,66 +52,83 @@
             namespace: "{{ vm_namespace }}"
             labels:
               app: "{{ vm_name }}"
-              environment: "{{ environment_label }}"
               os: "rhel{{ rhel_version }}"
               kubevirt.io/vm: "{{ vm_name }}"
-            annotations:
-              description: "RHEL {{ rhel_version }} VM - {{ vm_cpus }} CPUs, {{ vm_memory }} RAM"
-              created-by: ansible-automation-platform
-              created-from: developer-hub
           spec:
+            dataVolumeTemplates:
+              - apiVersion: cdi.kubevirt.io/v1beta1
+                kind: DataVolume
+                metadata:
+                  name: "{{ vm_name }}-disk"
+                spec:
+                  sourceRef:
+                    kind: DataSource
+                    name: "{{ rhel_image_map[rhel_version] }}"
+                    namespace: openshift-virtualization-os-images
+                  storage:
+                    resources:
+                      requests:
+                        storage: "{{ vm_disk_size }}"
             running: true
             template:
               metadata:
                 labels:
-                  kubevirt.io/vm: "{{ vm_name }}"
+                  kubevirt.io/domain: "{{ vm_name }}"
                   app: "{{ vm_name }}"
               spec:
                 domain:
                   cpu:
-                    cores: "{{ vm_cpus | int }}"
+                    cores: {{ vm_cpus | int }}
                     sockets: 1
                     threads: 1
-                  memory:
-                    guest: "{{ vm_memory }}"
                   devices:
                     disks:
-                      - name: rootdisk
-                        disk:
+                      - disk:
                           bus: virtio
-                      - name: cloudinitdisk
-                        disk:
+                        name: rootdisk
+                      - disk:
                           bus: virtio
+                        name: cloudinitdisk
                     interfaces:
-                      - name: default
-                        masquerade: {}
-                        model: virtio
-                    networkInterfaceMultiqueue: true
+                      - masquerade: {}
+                        name: default
                     rng: {}
-                  resources:
-                    requests:
-                      memory: "{{ vm_memory }}"
+                  memory:
+                    guest: "{{ vm_memory }}"
+                  resources: {}
                 networks:
                   - name: default
                     pod: {}
                 terminationGracePeriodSeconds: 180
                 volumes:
-                  - name: rootdisk
-                    dataVolume:
+                  - dataVolume:
                       name: "{{ vm_name }}-disk"
-                  - name: cloudinitdisk
-                    cloudInitNoCloud:
-                      secretRef:
-                        name: "{{ vm_name }}-cloudinit"
-
-    - name: Debug VM definition
-      ansible.builtin.debug:
-        var: vm_definition
-
-    - name: Create VirtualMachine
-      kubernetes.core.k8s:
-        state: present
-        definition: "{{ vm_definition }}"
+                    name: rootdisk
+                  - cloudInitNoCloud:
+                      userData: |
+                        #cloud-config
+                        user: {{ vm_user }}
+                        password: {{ vm_password }}
+                        chpasswd: { expire: False }
+                        {% if ssh_public_key != '' %}
+                        ssh_authorized_keys:
+                          - {{ ssh_public_key }}
+                        {% endif %}
+                        ssh_pwauth: true
+                        disable_root: false
+                        package_update: true
+                        package_upgrade: false
+                        packages:
+                          - vim
+                          - git
+                          - curl
+                          - wget
+                          - net-tools
+                        timezone: UTC
+                        hostname: {{ vm_name }}
+                        fqdn: {{ vm_name }}.{{ vm_namespace }}.svc.cluster.local
+                        final_message: "RHEL VM {{ vm_name }} is ready!"
+                    name: cloudinitdisk
       register: vm_created
 
     - name: Wait for VM to be ready
