@@ -133,7 +133,6 @@
               created-from: "developer-hub"
           spec:
             running: true
-            dataVolumeTemplates: []
             template:
               metadata:
                 labels:
@@ -142,7 +141,7 @@
               spec:
                 domain:
                   cpu:
-                    cores: "{{ vm_cpus }}"
+                    cores: {{ vm_cpus | int }}
                     sockets: 1
                     threads: 1
                   memory:
