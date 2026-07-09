@@ -34,7 +34,7 @@ TEMPLATE_FILE="$SCRIPT_DIR/../templates/request-vm-servicenow-template.yaml"
 
 sed -i.bak \
   -e "s|dev00000.service-now.com|${SN_INSTANCE}.service-now.com|g" \
-  -e "s|cmhkaF9pbnRlZ3JhdGlvbjpSSERISW50ZWdyYXRpb24yMDI0IQ==|${SN_BASIC_AUTH}|g" \
+  -e "s|PLACEHOLDER_BASIC_AUTH|${SN_BASIC_AUTH}|g" \
   "$TEMPLATE_FILE"
 
 echo "✅ Template updated with real ServiceNow instance URL"

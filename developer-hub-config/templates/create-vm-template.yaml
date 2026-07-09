@@ -3,12 +3,17 @@ kind: Template
 metadata:
   name: create-rhel-vm
   title: Create RHEL VM
-  description: Self-service provisioning of RHEL virtual machines on OpenShift Virtualization via Ansible Automation Platform
+  description: |
+    Internal template invoked by ServiceNow on approval.
+    Provisions a RHEL VM via Ansible Automation Platform and registers it in the catalog.
   tags:
     - vm
     - rhel
     - openshift-virtualization
     - ansible
+    - internal
+  annotations:
+    backstage.io/techdocs-ref: dir:.
 spec:
   owner: platform-team
   type: infrastructure
@@ -87,8 +92,6 @@ spec:
             - '50 GiB'
             - '100 GiB'
 
-    - title: Access Configuration
-      properties:
         vm_user:
           title: VM Username
           type: string
@@ -98,7 +101,7 @@ spec:
         vm_password:
           title: VM Password
           type: string
-          description: Default login password (will be set via cloud-init)
+          description: Default login password (set via cloud-init)
           default: redhat
           ui:widget: password
 
@@ -110,33 +113,22 @@ spec:
           ui:options:
             rows: 3
 
-    - title: Review and Approve
-      description: |
-        ## Approve VM Provisioning Request
-
-        Please review the VM specification carefully. By clicking **Create**, you are
-        approving the provisioning of a virtual machine in your OpenShift cluster.
-
-        Once approved, the VM will be automatically provisioned via Ansible Automation Platform.
-      properties:
-        approved:
-          title: I approve this VM provisioning request and understand it will consume cluster resources
-          type: boolean
-          default: false
-          ui:widget: checkbox
-      required:
-        - approved
+        sn_request_number:
+          title: ServiceNow Request Number
+          type: string
+          description: ServiceNow ticket that approved this request (auto-populated)
+          default: ''
 
   steps:
     - id: trigger-aap
-      name: Submit VM Provisioning Request to Ansible
+      name: Trigger VM Provisioning via Ansible Automation Platform
       action: roadiehq:utils:http:request
       input:
         method: POST
         url: https://aap-platform-ansible-automation-platform.apps.cluster-k5zwd.dyn.redhatworkshops.io/api/controller/v2/job_templates/9/launch/
         headers:
           content-type: application/json
-          # Auth injected by RHDH proxy — no credentials in template
+          # Token injected server-side from RHDH secret (AAP_TOKEN env var via proxy config)
         body:
           extra_vars:
             vm_name: ${{ parameters.vm_name }}
@@ -150,23 +142,29 @@ spec:
             ssh_public_key: "${{ parameters.ssh_public_key | default('') }}"
 
     - id: log-job
-      name: Log AAP Job Details
+      name: Log AAP Job
       action: debug:log
       input:
-        message: "VM provisioning job submitted. AAP Job ID: ${{ steps['trigger-aap'].output.body.id }}"
+        message: |
+          ✅ AAP Job launched!
+          Job ID: ${{ steps['trigger-aap'].output.body.id }}
+          Status: ${{ steps['trigger-aap'].output.body.status }}
+          ServiceNow Request: ${{ parameters.sn_request_number }}
 
   output:
     links:
-      - title: View Provisioning Job in AAP
+      - title: View AAP Job
         url: https://aap-platform-ansible-automation-platform.apps.cluster-k5zwd.dyn.redhatworkshops.io/#/jobs/playbook/${{ steps['trigger-aap'].output.body.id }}/details
         icon: dashboard
-      - title: View VM in OpenShift Console
+      - title: View VM in OpenShift
         url: https://console-openshift-console.apps.cluster-k5zwd.dyn.redhatworkshops.io/k8s/ns/${{ parameters.vm_namespace }}/kubevirt.io~v1~VirtualMachine/${{ parameters.vm_name }}
         icon: dashboard
     text:
-      - title: VM Provisioning Summary
+      - title: VM Provisioning Started
         content: |
-          ## VM "${{ parameters.vm_name }}" Approved and Provisioning Started
+          ## VM "${{ parameters.vm_name }}" Provisioning Started
+
+          Approved via ServiceNow: **${{ parameters.sn_request_number }}**
 
           | Parameter | Value |
           |-----------|-------|
@@ -175,10 +173,9 @@ spec:
           | Memory | ${{ parameters.vm_memory }} |
           | Disk | ${{ parameters.vm_disk_size }} |
           | Namespace | ${{ parameters.vm_namespace }} |
+          | AAP Job ID | ${{ steps['trigger-aap'].output.body.id }} |
 
-          AAP Job ID: **${{ steps['trigger-aap'].output.body.id }}**
-
-          **Once ready, SSH access:**
+          **SSH access once ready (~5-10 min):**
           ```
           ssh ${{ parameters.vm_user }}@${{ parameters.vm_name }}-ssh.${{ parameters.vm_namespace }}.svc.cluster.local
           ```
