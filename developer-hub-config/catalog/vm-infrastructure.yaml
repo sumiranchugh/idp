@@ -1,0 +1,49 @@
+---
+# Catalog entity for RHEL VM provisioning infrastructure
+# The servicenow.com/entity-id annotation links this entity to SN change requests
+# SN change requests must have u_backstage_entity_id = "rhel-vm-provisioning"
+# to appear in the ServiceNow tab on this entity page
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: rhel-vm-provisioning
+  namespace: default
+  title: RHEL VM Provisioning Service
+  description: >
+    Self-service RHEL virtual machine provisioning via Red Hat Developer Hub,
+    ServiceNow approval workflows, and Ansible Automation Platform.
+  annotations:
+    backstage.io/managed-by-location: url:https://github.com/sumiranchugh/idp/blob/main/developer-hub-config/catalog/vm-infrastructure.yaml
+    servicenow.com/entity-id: rhel-vm-provisioning
+  tags:
+    - vm
+    - rhel
+    - openshift-virtualization
+    - ansible
+    - servicenow
+  links:
+    - url: https://aap-platform-ansible-automation-platform.apps.cluster-k5zwd.dyn.redhatworkshops.io
+      title: Ansible Automation Platform
+      icon: dashboard
+    - url: https://dev423121.service-now.com/change_request_list.do
+      title: ServiceNow Change Requests
+      icon: dashboard
+    - url: https://backstage-developer-hub-developer-hub.apps.cluster-k5zwd.dyn.redhatworkshops.io/orchestrator
+      title: Orchestrator Workflows
+      icon: dashboard
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: openshift-virtualization
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: openshift-virtualization
+  namespace: default
+  description: OpenShift Virtualization platform for RHEL VM workloads
+  annotations:
+    backstage.io/managed-by-location: url:https://github.com/sumiranchugh/idp/blob/main/developer-hub-config/catalog/vm-infrastructure.yaml
+spec:
+  owner: platform-team
