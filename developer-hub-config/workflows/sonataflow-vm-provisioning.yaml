@@ -1,20 +1,13 @@
 ---
 # SonataFlow workflow — RHEL VM Provisioning with ServiceNow Approval
-# Architecture:
-#   1. RHDH template creates SN ticket + starts this workflow (passes sn_sys_id)
-#   2. Workflow waits for CloudEvent callback from ServiceNow on approval
-#   3. SN Business Rule POSTs CloudEvent to SonataFlow AND calls AAP to provision VM
-#   4. Orchestrator UI shows live workflow status
-#
-# NOTE: REST calls are done externally (RHDH template & SN Business Rule)
-# This workflow uses expression-type functions only (safest for compile)
+# Uses inject + callback + switch states to avoid internal EmbeddedStart/Script nodes in UI
 apiVersion: sonataflow.org/v1alpha08
 kind: SonataFlow
 metadata:
   name: vm-provisioning-approval
   namespace: developer-hub
   annotations:
-    sonataflow.org/description: RHEL VM provisioning workflow with ServiceNow approval tracking
+    sonataflow.org/description: RHEL VM provisioning with ServiceNow approval via Orchestrator
     sonataflow.org/profile: preview
 spec:
   flow:
@@ -23,16 +16,16 @@ spec:
     specVersion: '0.8'
     name: RHEL VM Provisioning — ServiceNow Approval
     description: >
-      Self-service RHEL VM provisioning with manager approval via ServiceNow.
-      Submitted through Red Hat Developer Hub and orchestrated by Ansible Automation Platform.
+      Self-service RHEL VM provisioning with manager approval via ServiceNow Change Request.
+      Submitted through Red Hat Developer Hub Orchestrator.
     annotations:
       - 'workflow-type:infrastructure'
-      - 'workflow-category:vm-provisioning'
 
     functions:
-      - name: setStatus
-        type: expression
-        operation: '. + {}'
+      # sysout is built-in to SonataFlow — logs to stdout without creating embedded sub-flows
+      - name: logState
+        type: custom
+        operation: sysout
 
     events:
       - name: vmApprovalDecision
@@ -42,38 +35,25 @@ spec:
           - contextAttributeName: snincidentsysid
 
     states:
+      # inject state: no function, no embedded nodes — cleanest UI display
       - name: Request Received
-        type: operation
-        actions:
-          - name: initialise
-            functionRef:
-              refName: setStatus
-              arguments:
-                workflow_status: pending_approval
-            actionDataFilter:
-              results: .init
-              toStateData: .init
-        stateDataFilter:
-          output: >
-            ${ . + {
-              workflow_status: "Pending Manager Approval",
-              vm: .vm_name,
-              namespace: .vm_namespace,
-              sn_change_request: .sn_number
-            } }
+        type: inject
+        data:
+          workflow_status: Pending Manager Approval
         transition: Awaiting Manager Approval
 
+      # callback state: paused waiting for CloudEvent from SN Business Rule
       - name: Awaiting Manager Approval
         type: callback
         action:
-          name: mark-waiting
+          name: log-waiting
           functionRef:
-            refName: setStatus
+            refName: logState
             arguments:
-              workflow_status: Awaiting Manager Approval in ServiceNow
+              message: Workflow paused — awaiting ServiceNow Change Request approval
         eventRef: vmApprovalDecision
         eventDataFilter:
-          data: '${ {approved: .approved, approvedBy: (.approvedBy // "unknown")} }'
+          data: '${ {approved: .approved, approvedBy: (.approvedBy // "approver")} }'
           toStateData: .approvalResult
         transition: Evaluate Approval Decision
 
@@ -82,10 +62,10 @@ spec:
         dataConditions:
           - condition: '${ .approvalResult.approved == true }'
             transition: Provisioning VM
-            name: Approved by Manager
+            name: Approved
           - condition: '${ .approvalResult.approved == false }'
             transition: Request Rejected
-            name: Rejected by Manager
+            name: Rejected
         defaultCondition:
           transition: Request Rejected
 
@@ -93,12 +73,6 @@ spec:
         type: inject
         data:
           workflow_status: Approved — VM Provisioning Started via AAP
-        stateDataFilter:
-          output: >
-            ${ . + {
-              workflow_status: "Approved — VM Provisioning Started",
-              approved_by: .approvalResult.approvedBy
-            } }
         end:
           terminate: true
 
@@ -106,11 +80,5 @@ spec:
         type: inject
         data:
           workflow_status: Rejected by Manager
-        stateDataFilter:
-          output: >
-            ${ . + {
-              workflow_status: "Rejected by Manager",
-              rejected_by: .approvalResult.approvedBy
-            } }
         end:
           terminate: true
