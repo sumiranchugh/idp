@@ -41,10 +41,9 @@
           metadata:
             name: "{{ vm_namespace }}"
 
-    - name: Create VirtualMachine with DataVolumeTemplate
-      kubernetes.core.k8s:
-        state: present
-        definition:
+    - name: Build VM definition with proper types
+      set_fact:
+        vm_definition:
           apiVersion: kubevirt.io/v1
           kind: VirtualMachine
           metadata:
@@ -129,6 +128,15 @@
                         fqdn: {{ vm_name }}.{{ vm_namespace }}.svc.cluster.local
                         final_message: "RHEL VM {{ vm_name }} is ready!"
                     name: cloudinitdisk
+
+    - name: Fix cores to be integer not string
+      set_fact:
+        vm_definition: "{{ vm_definition | combine({'spec': {'template': {'spec': {'domain': {'cpu': {'cores': vm_cpus | int, 'sockets': 1, 'threads': 1}}}}}}, recursive=True) }}"
+
+    - name: Create VirtualMachine with DataVolumeTemplate
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ vm_definition }}"
       register: vm_created
 
     - name: Wait for VM to be ready
