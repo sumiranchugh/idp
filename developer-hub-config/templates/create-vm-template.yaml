@@ -136,7 +136,7 @@ spec:
         url: https://aap-platform-ansible-automation-platform.apps.cluster-k5zwd.dyn.redhatworkshops.io/api/controller/v2/job_templates/9/launch/
         headers:
           content-type: application/json
-          Authorization: Bearer Zhpi9lgBdCqNDF0ScYT7M5FyT0AX5e
+          # Auth injected by RHDH proxy — no credentials in template
         body:
           extra_vars:
             vm_name: ${{ parameters.vm_name }}

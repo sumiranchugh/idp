@@ -19,7 +19,7 @@ SN_USER="admin"
 SN_PASSWORD="YOUR_SERVICENOW_PASSWORD"                      # from SN welcome email
 
 AAP_URL="https://aap-platform-ansible-automation-platform.apps.cluster-k5zwd.dyn.redhatworkshops.io"
-AAP_TOKEN="Zhpi9lgBdCqNDF0ScYT7M5FyT0AX5e"
+AAP_TOKEN="YOUR_AAP_TOKEN"                              # run: oc get secret aap-platform-admin-password -n ansible-automation-platform -o jsonpath='{.data.password}' | base64 -d
 AAP_JOB_TEMPLATE_ID="9"
 
 RHDH_URL="https://backstage-developer-hub-developer-hub.apps.cluster-k5zwd.dyn.redhatworkshops.io"
@@ -69,7 +69,7 @@ echo "    ✅ Integration user sys_id: $USER_SYS_ID"
 # Set password for integration user
 curl -s -u "$SN_AUTH" "${HEADERS[@]}" -X PATCH \
   "$SN_URL/api/now/table/sys_user/$USER_SYS_ID" \
-  -d '{"user_password": "RHDHIntegration2024!"}' > /dev/null
+  -d '{"user_password": "RedHat123!"}' > /dev/null
 
 # Assign itil role to integration user
 ROLE_RESP=$(curl -s -u "$SN_AUTH" \
@@ -186,7 +186,7 @@ echo "============================================================"
 echo ""
 echo "Catalog Item sys_id : $CATALOG_ITEM_SYS_ID"
 echo "REST Message sys_id : $REST_MSG_ID"
-echo "Integration user    : rhdh_integration / RHDHIntegration2024!"
+echo "Integration user    : rhdh_integration / RedHat123!"
 echo ""
 echo "Manual steps still required (cannot be scripted via REST API):"
 echo ""

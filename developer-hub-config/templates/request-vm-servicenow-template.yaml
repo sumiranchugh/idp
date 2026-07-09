@@ -147,11 +147,11 @@ spec:
       action: roadiehq:utils:http:request
       input:
         method: POST
-        url: https://dev00000.service-now.com/api/now/table/sc_request
+        url: https://dev423121.service-now.com/api/now/table/sc_request
         headers:
           Content-Type: application/json
           Accept: application/json
-          Authorization: Basic cmhkaF9pbnRlZ3JhdGlvbjpSSERISW50ZWdyYXRpb24yMDI0IQ==
+          # Auth injected by RHDH proxy — no credentials in template
         body:
           short_description: "VM Request: ${{ parameters.vm_name }} (RHEL ${{ parameters.rhel_version }})"
           description: |
@@ -197,10 +197,10 @@ spec:
   output:
     links:
       - title: View Request in ServiceNow
-        url: https://dev00000.service-now.com/sc_request.do?sys_id=${{ steps['create-sn-request'].output.body.result.sys_id }}
+        url: https://dev423121.service-now.com/sc_request.do?sys_id=${{ steps['create-sn-request'].output.body.result.sys_id }}
         icon: dashboard
       - title: ServiceNow Service Portal
-        url: https://dev00000.service-now.com/sp
+        url: https://dev423121.service-now.com/sp
         icon: dashboard
     text:
       - title: Request Submitted Successfully

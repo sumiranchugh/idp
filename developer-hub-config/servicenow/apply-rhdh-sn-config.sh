@@ -7,7 +7,7 @@
 
 SN_INSTANCE="dev00000"                         # e.g. dev12345
 SN_USER="rhdh_integration"
-SN_PASSWORD="RHDHIntegration2024!"             # set during setup-servicenow.sh
+SN_PASSWORD="RedHat123!"             # set during setup-servicenow.sh
 SN_URL="https://${SN_INSTANCE}.service-now.com"
 
 # ─────────────────────────────────────────────────────────────────
