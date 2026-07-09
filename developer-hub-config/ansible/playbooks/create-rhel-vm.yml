@@ -64,17 +64,8 @@
               name: "{{ rhel_image_map[rhel_version] }}"
       register: datavolume_created
 
-    - name: Wait for DataVolume to be ready
-      kubernetes.core.k8s_info:
-        api_version: cdi.kubevirt.io/v1beta1
-        kind: DataVolume
-        name: "{{ vm_name }}-disk"
-        namespace: "{{ vm_namespace }}"
-      register: dv_status
-      until: dv_status.resources[0].status.phase == "Succeeded"
-      retries: 60
-      delay: 10
-      when: datavolume_created.changed
+    # Note: DataVolume will populate when VM starts (WaitForFirstConsumer binding mode)
+    # Skipping wait - VM creation will trigger the PVC binding and population
 
     - name: Create cloud-init secret
       kubernetes.core.k8s:
