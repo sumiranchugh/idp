@@ -1,0 +1,28 @@
+---
+- name: List all VMs in OpenShift Virtualization
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    vm_namespace: "{{ vm_namespace | default('vms') }}"
+
+  tasks:
+    - name: Get all VirtualMachines
+      kubernetes.core.k8s_info:
+        api_version: kubevirt.io/v1
+        kind: VirtualMachine
+        namespace: "{{ vm_namespace }}"
+      register: vms
+
+    - name: Display VM information
+      ansible.builtin.debug:
+        msg:
+          - "VMs in namespace {{ vm_namespace }}:"
+          - "{{ item.metadata.name }} - CPUs: {{ item.spec.template.spec.domain.cpu.cores }} - Memory: {{ item.spec.template.spec.domain.memory.guest }} - Status: {{ item.status.printableStatus | default('Unknown') }}"
+      loop: "{{ vms.resources }}"
+      when: vms.resources | length > 0
+
+    - name: No VMs found message
+      ansible.builtin.debug:
+        msg: "No VMs found in namespace {{ vm_namespace }}"
+      when: vms.resources | length == 0

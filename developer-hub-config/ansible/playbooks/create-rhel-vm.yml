@@ -1,0 +1,287 @@
+---
+- name: Create RHEL VM on OpenShift Virtualization
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    # VM Configuration (will be overridden by AAP survey/Developer Hub)
+    vm_name: "{{ vm_name | default('rhel-vm-' + lookup('pipe', 'date +%s')) }}"
+    vm_namespace: "{{ vm_namespace | default('vms') }}"
+    vm_cpus: "{{ vm_cpus | default(2) }}"
+    vm_memory: "{{ vm_memory | default('4Gi') }}"
+    vm_disk_size: "{{ vm_disk_size | default('50Gi') }}"
+    rhel_version: "{{ rhel_version | default('9') }}"
+
+    # Storage configuration
+    storage_class: "{{ storage_class | default('ocs-external-storagecluster-ceph-rbd') }}"
+
+    # Network configuration
+    vm_network: "{{ vm_network | default('default') }}"
+
+    # Image configuration (RHEL boot source)
+    # These are DataSources that should be pre-created in openshift-virtualization-os-images namespace
+    rhel_image_map:
+      "9": "rhel9"
+      "8": "rhel8"
+
+    # Cloud-init configuration
+    vm_user: "{{ vm_user | default('cloud-user') }}"
+    vm_password: "{{ vm_password | default('redhat') }}"
+    ssh_public_key: "{{ ssh_public_key | default('') }}"
+
+  tasks:
+    - name: Ensure namespace exists
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ vm_namespace }}"
+
+    - name: Create DataVolume for VM disk
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: cdi.kubevirt.io/v1beta1
+          kind: DataVolume
+          metadata:
+            name: "{{ vm_name }}-disk"
+            namespace: "{{ vm_namespace }}"
+          spec:
+            storage:
+              storageClassName: "{{ storage_class }}"
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: "{{ vm_disk_size }}"
+            source:
+              pvc:
+                namespace: openshift-virtualization-os-images
+                name: "{{ rhel_image_map[rhel_version] }}"
+      register: datavolume_created
+
+    - name: Wait for DataVolume to be ready
+      kubernetes.core.k8s_info:
+        api_version: cdi.kubevirt.io/v1beta1
+        kind: DataVolume
+        name: "{{ vm_name }}-disk"
+        namespace: "{{ vm_namespace }}"
+      register: dv_status
+      until: dv_status.resources[0].status.phase == "Succeeded"
+      retries: 60
+      delay: 10
+      when: datavolume_created.changed
+
+    - name: Create cloud-init secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "{{ vm_name }}-cloudinit"
+            namespace: "{{ vm_namespace }}"
+          type: Opaque
+          stringData:
+            userdata: |
+              #cloud-config
+              user: {{ vm_user }}
+              password: {{ vm_password }}
+              chpasswd: { expire: False }
+              {% if ssh_public_key != '' %}
+              ssh_authorized_keys:
+                - {{ ssh_public_key }}
+              {% endif %}
+              # Enable SSH
+              ssh_pwauth: true
+              disable_root: false
+
+              # Update packages
+              package_update: true
+              package_upgrade: false
+
+              # Install basic packages
+              packages:
+                - vim
+                - git
+                - curl
+                - wget
+                - net-tools
+
+              # Set timezone
+              timezone: UTC
+
+              # Set hostname
+              hostname: {{ vm_name }}
+              fqdn: {{ vm_name }}.{{ vm_namespace }}.svc.cluster.local
+
+              # Final message
+              final_message: "RHEL VM {{ vm_name }} is ready!"
+
+    - name: Create VirtualMachine
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: kubevirt.io/v1
+          kind: VirtualMachine
+          metadata:
+            name: "{{ vm_name }}"
+            namespace: "{{ vm_namespace }}"
+            labels:
+              app: "{{ vm_name }}"
+              environment: "{{ environment | default('development') }}"
+              os: "rhel{{ rhel_version }}"
+              kubevirt.io/vm: "{{ vm_name }}"
+            annotations:
+              description: "RHEL {{ rhel_version }} VM - {{ vm_cpus }} CPUs, {{ vm_memory }} RAM"
+              created-by: "ansible-automation-platform"
+              created-from: "developer-hub"
+          spec:
+            running: true
+            dataVolumeTemplates: []
+            template:
+              metadata:
+                labels:
+                  kubevirt.io/vm: "{{ vm_name }}"
+                  app: "{{ vm_name }}"
+              spec:
+                domain:
+                  cpu:
+                    cores: {{ vm_cpus }}
+                    sockets: 1
+                    threads: 1
+                  memory:
+                    guest: "{{ vm_memory }}"
+                  devices:
+                    disks:
+                      - name: rootdisk
+                        disk:
+                          bus: virtio
+                      - name: cloudinitdisk
+                        disk:
+                          bus: virtio
+                    interfaces:
+                      - name: default
+                        masquerade: {}
+                        model: virtio
+                    networkInterfaceMultiqueue: true
+                    rng: {}
+                  resources:
+                    requests:
+                      memory: "{{ vm_memory }}"
+                networks:
+                  - name: default
+                    pod: {}
+                terminationGracePeriodSeconds: 180
+                volumes:
+                  - name: rootdisk
+                    dataVolume:
+                      name: "{{ vm_name }}-disk"
+                  - name: cloudinitdisk
+                    cloudInitNoCloud:
+                      secretRef:
+                        name: "{{ vm_name }}-cloudinit"
+      register: vm_created
+
+    - name: Wait for VM to be ready
+      kubernetes.core.k8s_info:
+        api_version: kubevirt.io/v1
+        kind: VirtualMachine
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: vm_status
+      until:
+        - vm_status.resources | length > 0
+        - vm_status.resources[0].status.ready is defined
+        - vm_status.resources[0].status.ready == true
+      retries: 60
+      delay: 10
+
+    - name: Get VirtualMachineInstance info
+      kubernetes.core.k8s_info:
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: vmi_info
+
+    - name: Create Service for VM SSH access
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: "{{ vm_name }}-ssh"
+            namespace: "{{ vm_namespace }}"
+            labels:
+              app: "{{ vm_name }}"
+          spec:
+            type: ClusterIP
+            selector:
+              kubevirt.io/vm: "{{ vm_name }}"
+            ports:
+              - name: ssh
+                port: 22
+                targetPort: 22
+                protocol: TCP
+
+    - name: Create Route for SSH access (optional)
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: route.openshift.io/v1
+          kind: Route
+          metadata:
+            name: "{{ vm_name }}-ssh"
+            namespace: "{{ vm_namespace }}"
+            labels:
+              app: "{{ vm_name }}"
+          spec:
+            to:
+              kind: Service
+              name: "{{ vm_name }}-ssh"
+            port:
+              targetPort: ssh
+            tls:
+              termination: passthrough
+      when: expose_ssh_route | default(false) | bool
+
+    - name: Output VM details
+      ansible.builtin.debug:
+        msg:
+          - "================================================"
+          - "VM Created Successfully!"
+          - "================================================"
+          - "VM Name: {{ vm_name }}"
+          - "Namespace: {{ vm_namespace }}"
+          - "CPUs: {{ vm_cpus }}"
+          - "Memory: {{ vm_memory }}"
+          - "Disk Size: {{ vm_disk_size }}"
+          - "RHEL Version: {{ rhel_version }}"
+          - "Status: {{ vm_status.resources[0].status.printableStatus | default('Starting') }}"
+          - "Ready: {{ vm_status.resources[0].status.ready | default(false) }}"
+          - ""
+          - "Access Information:"
+          - "  Username: {{ vm_user }}"
+          - "  Password: {{ vm_password }}"
+          - "  SSH Service: {{ vm_name }}-ssh.{{ vm_namespace }}.svc.cluster.local"
+          - ""
+          - "Connect from inside cluster:"
+          - "  ssh {{ vm_user }}@{{ vm_name }}-ssh.{{ vm_namespace }}.svc.cluster.local"
+          - "================================================"
+
+    - name: Set stats for AAP/Developer Hub
+      ansible.builtin.set_stats:
+        data:
+          vm_name: "{{ vm_name }}"
+          vm_namespace: "{{ vm_namespace }}"
+          vm_cpus: "{{ vm_cpus }}"
+          vm_memory: "{{ vm_memory }}"
+          vm_disk_size: "{{ vm_disk_size }}"
+          rhel_version: "{{ rhel_version }}"
+          vm_ready: "{{ vm_status.resources[0].status.ready | default(false) }}"
+          vm_status: "{{ vm_status.resources[0].status.printableStatus | default('Unknown') }}"
+          ssh_service: "{{ vm_name }}-ssh.{{ vm_namespace }}.svc.cluster.local"

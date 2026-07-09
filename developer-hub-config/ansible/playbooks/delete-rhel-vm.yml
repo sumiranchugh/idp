@@ -1,0 +1,54 @@
+---
+- name: Delete RHEL VM from OpenShift Virtualization
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    vm_name: "{{ vm_name }}"
+    vm_namespace: "{{ vm_namespace | default('vms') }}"
+
+  tasks:
+    - name: Stop and delete VirtualMachine
+      kubernetes.core.k8s:
+        state: absent
+        api_version: kubevirt.io/v1
+        kind: VirtualMachine
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+
+    - name: Delete DataVolume
+      kubernetes.core.k8s:
+        state: absent
+        api_version: cdi.kubevirt.io/v1beta1
+        kind: DataVolume
+        name: "{{ vm_name }}-disk"
+        namespace: "{{ vm_namespace }}"
+
+    - name: Delete cloud-init secret
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: Secret
+        name: "{{ vm_name }}-cloudinit"
+        namespace: "{{ vm_namespace }}"
+
+    - name: Delete SSH Service
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: Service
+        name: "{{ vm_name }}-ssh"
+        namespace: "{{ vm_namespace }}"
+
+    - name: Delete SSH Route
+      kubernetes.core.k8s:
+        state: absent
+        api_version: route.openshift.io/v1
+        kind: Route
+        name: "{{ vm_name }}-ssh"
+        namespace: "{{ vm_namespace }}"
+
+    - name: Output deletion status
+      ansible.builtin.debug:
+        msg:
+          - "VM {{ vm_name }} deleted from namespace {{ vm_namespace }}"
