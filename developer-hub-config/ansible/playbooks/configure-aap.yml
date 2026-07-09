@@ -1,0 +1,256 @@
+---
+# Configure AAP resources as code
+# This playbook creates projects, credentials, inventories, and job templates in AAP
+
+- name: Configure AAP for VM Provisioning
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    controller_host: "{{ lookup('env', 'CONTROLLER_HOST') | default('https://aap-platform-ansible-automation-platform.apps.cluster-k5zwd.dyn.redhatworkshops.io', true) }}"
+    controller_username: "{{ lookup('env', 'CONTROLLER_USERNAME') | default('admin', true) }}"
+    controller_password: "{{ lookup('env', 'CONTROLLER_PASSWORD') }}"
+    controller_validate_certs: false
+
+    # ServiceAccount token for OpenShift
+    openshift_token: "{{ lookup('env', 'OPENSHIFT_TOKEN') }}"
+
+  collections:
+    - awx.awx
+
+  tasks:
+    - name: Ensure awx.awx collection is available
+      debug:
+        msg: "Using awx.awx collection to configure AAP"
+
+    # Create Project
+    - name: Create VM Provisioning Project
+      awx.awx.project:
+        name: vms
+        description: "VM provisioning playbooks for OpenShift Virtualization"
+        organization: Default
+        scm_type: git
+        scm_url: https://github.com/sumiranchugh/idp.git
+        scm_branch: main
+        scm_update_on_launch: true
+        scm_update_cache_timeout: 0
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_validate_certs }}"
+        state: present
+
+    # Create Credential
+    - name: Create OpenShift Credential
+      awx.awx.credential:
+        name: openshift-virtualization
+        description: "OpenShift API credentials for VM provisioning"
+        organization: Default
+        credential_type: OpenShift or Kubernetes API Bearer Token
+        inputs:
+          host: https://kubernetes.default.svc
+          bearer_token: "{{ openshift_token }}"
+          verify_ssl: false
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_validate_certs }}"
+        state: present
+
+    # Create Inventory
+    - name: Create localhost Inventory
+      awx.awx.inventory:
+        name: localhost
+        description: "Localhost inventory for API-based playbooks"
+        organization: Default
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_validate_certs }}"
+        state: present
+
+    - name: Add localhost to Inventory
+      awx.awx.host:
+        name: localhost
+        inventory: localhost
+        variables:
+          ansible_connection: local
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_validate_certs }}"
+        state: present
+
+    # Create Job Template
+    - name: Create VM Provisioning Job Template
+      awx.awx.job_template:
+        name: Create RHEL VM
+        description: "Create a RHEL VM on OpenShift Virtualization"
+        organization: Default
+        project: vms
+        playbook: developer-hub-config/ansible/playbooks/create-rhel-vm.yml
+        inventory: localhost
+        credentials:
+          - openshift-virtualization
+        ask_variables_on_launch: true
+        extra_vars:
+          vm_namespace: vms
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_validate_certs }}"
+        state: present
+      register: job_template
+
+    # Create Survey for Job Template
+    - name: Create Survey for VM Provisioning
+      awx.awx.job_template:
+        name: Create RHEL VM
+        survey_enabled: true
+        survey_spec:
+          name: VM Configuration
+          description: Configure your RHEL VM
+          spec:
+            - question_name: VM Name
+              question_description: Name for the virtual machine
+              required: true
+              type: text
+              variable: vm_name
+              min: 1
+              max: 253
+              default: ""
+
+            - question_name: Namespace
+              question_description: OpenShift namespace for the VM
+              required: true
+              type: text
+              variable: vm_namespace
+              min: 1
+              max: 63
+              default: vms
+
+            - question_name: CPUs
+              question_description: Number of CPU cores
+              required: true
+              type: integer
+              variable: vm_cpus
+              min: 1
+              max: 16
+              default: 2
+
+            - question_name: Memory
+              question_description: Memory allocation (e.g., 4Gi, 8Gi)
+              required: true
+              type: text
+              variable: vm_memory
+              min: 1
+              max: 10
+              default: 4Gi
+
+            - question_name: Disk Size
+              question_description: Root disk size (e.g., 30Gi, 50Gi)
+              required: true
+              type: text
+              variable: vm_disk_size
+              min: 1
+              max: 10
+              default: 30Gi
+
+            - question_name: RHEL Version
+              question_description: Red Hat Enterprise Linux version
+              required: true
+              type: multiplechoice
+              variable: rhel_version
+              choices:
+                - "9"
+                - "8"
+              default: "9"
+
+            - question_name: VM User
+              question_description: Default username for the VM
+              required: false
+              type: text
+              variable: vm_user
+              min: 1
+              max: 32
+              default: cloud-user
+
+            - question_name: VM Password
+              question_description: Default password for the VM user
+              required: false
+              type: password
+              variable: vm_password
+              min: 8
+              max: 128
+              default: redhat
+
+            - question_name: Expose VM
+              question_description: Create OpenShift Route to access VM
+              required: true
+              type: multiplechoice
+              variable: expose_vm
+              choices:
+                - "true"
+                - "false"
+              default: "false"
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_validate_certs }}"
+        state: present
+
+    # Create Delete VM Job Template
+    - name: Create VM Deletion Job Template
+      awx.awx.job_template:
+        name: Delete RHEL VM
+        description: "Delete a RHEL VM from OpenShift Virtualization"
+        organization: Default
+        project: vms
+        playbook: developer-hub-config/ansible/playbooks/delete-rhel-vm.yml
+        inventory: localhost
+        credentials:
+          - openshift-virtualization
+        survey_enabled: true
+        survey_spec:
+          name: VM Deletion
+          description: Select VM to delete
+          spec:
+            - question_name: VM Name
+              question_description: Name of the VM to delete
+              required: true
+              type: text
+              variable: vm_name
+              min: 1
+              max: 253
+              default: ""
+
+            - question_name: Namespace
+              question_description: Namespace containing the VM
+              required: true
+              type: text
+              variable: vm_namespace
+              min: 1
+              max: 63
+              default: vms
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_validate_certs }}"
+        state: present
+
+    - name: Configuration Complete
+      debug:
+        msg: |
+          ✅ AAP Configuration Complete!
+
+          Created Resources:
+          - Project: vms
+          - Credential: openshift-virtualization
+          - Inventory: localhost
+          - Job Template: Create RHEL VM (with survey)
+          - Job Template: Delete RHEL VM (with survey)
+
+          Next steps:
+          1. Login to AAP UI
+          2. Go to Resources → Templates
+          3. Launch 'Create RHEL VM' job
