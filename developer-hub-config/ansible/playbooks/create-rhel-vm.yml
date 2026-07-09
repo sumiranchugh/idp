@@ -113,6 +113,10 @@
               # Final message
               final_message: "RHEL VM {{ vm_name }} is ready!"
 
+    - name: Set environment label
+      set_fact:
+        environment_label: "{{ environment | default('development', true) }}"
+
     - name: Build VirtualMachine definition
       set_fact:
         vm_definition:
@@ -123,7 +127,7 @@
             namespace: "{{ vm_namespace }}"
             labels:
               app: "{{ vm_name }}"
-              environment: "{{ environment | default('development') }}"
+              environment: "{{ environment_label }}"
               os: "rhel{{ rhel_version }}"
               kubevirt.io/vm: "{{ vm_name }}"
             annotations:
