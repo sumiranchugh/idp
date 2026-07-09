@@ -1,7 +1,7 @@
 ---
 - name: Create RHEL VM on OpenShift Virtualization
   hosts: localhost
-  gather_facts: false
+  gather_facts: true
 
   module_defaults:
     group/kubernetes.core.k8s:
@@ -10,32 +10,28 @@
       validate_certs: "{{ lookup('env', 'K8S_AUTH_VERIFY_SSL') | default(false, true) }}"
 
   vars:
-    # VM Configuration (will be overridden by AAP survey/Developer Hub)
-    vm_name: "{{ vm_name | default('rhel-vm-' + lookup('pipe', 'date +%s')) }}"
-    vm_namespace: "{{ vm_namespace | default('vms') }}"
-    vm_cpus: "{{ vm_cpus | default(2) }}"
-    vm_memory: "{{ vm_memory | default('4Gi') }}"
-    vm_disk_size: "{{ vm_disk_size | default('50Gi') }}"
-    rhel_version: "{{ rhel_version | default('9') }}"
-
-    # Storage configuration
-    storage_class: "{{ storage_class | default('ocs-external-storagecluster-ceph-rbd') }}"
-
-    # Network configuration
-    vm_network: "{{ vm_network | default('default') }}"
-
     # Image configuration (RHEL boot source)
     # These are DataSources that should be pre-created in openshift-virtualization-os-images namespace
     rhel_image_map:
       "9": "rhel9"
       "8": "rhel8"
 
-    # Cloud-init configuration
-    vm_user: "{{ vm_user | default('cloud-user') }}"
-    vm_password: "{{ vm_password | default('redhat') }}"
-    ssh_public_key: "{{ ssh_public_key | default('') }}"
-
   tasks:
+    - name: Set default values for undefined variables
+      set_fact:
+        vm_name: "{{ vm_name | default('rhel-vm-' + ansible_date_time.epoch) }}"
+        vm_namespace: "{{ vm_namespace | default('vms') }}"
+        vm_cpus: "{{ vm_cpus | default(2) }}"
+        vm_memory: "{{ vm_memory | default('4Gi') }}"
+        vm_disk_size: "{{ vm_disk_size | default('50Gi') }}"
+        rhel_version: "{{ rhel_version | default('9') }}"
+        storage_class: "{{ storage_class | default('ocs-external-storagecluster-ceph-rbd') }}"
+        vm_network: "{{ vm_network | default('default') }}"
+        vm_user: "{{ vm_user | default('cloud-user') }}"
+        vm_password: "{{ vm_password | default('redhat') }}"
+        ssh_public_key: "{{ ssh_public_key | default('') }}"
+        expose_vm: "{{ expose_vm | default(false) }}"
+
     - name: Ensure namespace exists
       kubernetes.core.k8s:
         state: present
