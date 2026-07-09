@@ -1,0 +1,183 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: create-rhel-vm
+  title: Create RHEL VM
+  description: Self-service provisioning of RHEL virtual machines on OpenShift Virtualization via Ansible Automation Platform
+  tags:
+    - vm
+    - rhel
+    - openshift-virtualization
+    - ansible
+spec:
+  owner: platform-team
+  type: infrastructure
+
+  parameters:
+    - title: VM Configuration
+      required:
+        - vm_name
+        - vm_namespace
+        - vm_cpus
+        - vm_memory
+        - vm_disk_size
+        - rhel_version
+      properties:
+        vm_name:
+          title: VM Name
+          type: string
+          description: Name for the virtual machine (lowercase, alphanumeric, hyphens)
+          pattern: '^[a-z0-9][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+          ui:help: 'Example: my-rhel-vm-01'
+
+        vm_namespace:
+          title: Namespace
+          type: string
+          description: OpenShift namespace where the VM will be created
+          default: vms
+
+        rhel_version:
+          title: RHEL Version
+          type: string
+          description: Red Hat Enterprise Linux version
+          default: '9'
+          enum:
+            - '9'
+            - '8'
+          enumNames:
+            - 'RHEL 9 (Recommended)'
+            - 'RHEL 8'
+
+        vm_cpus:
+          title: CPU Cores
+          type: integer
+          description: Number of virtual CPU cores
+          default: 2
+          minimum: 1
+          maximum: 16
+
+        vm_memory:
+          title: Memory
+          type: string
+          description: Memory allocation
+          default: 4Gi
+          enum:
+            - 2Gi
+            - 4Gi
+            - 8Gi
+            - 16Gi
+          enumNames:
+            - '2 GiB'
+            - '4 GiB (Default)'
+            - '8 GiB'
+            - '16 GiB'
+
+        vm_disk_size:
+          title: Disk Size
+          type: string
+          description: Root disk size
+          default: 30Gi
+          enum:
+            - 30Gi
+            - 50Gi
+            - 100Gi
+          enumNames:
+            - '30 GiB (Default)'
+            - '50 GiB'
+            - '100 GiB'
+
+    - title: Access Configuration
+      properties:
+        vm_user:
+          title: VM Username
+          type: string
+          description: Default login username for the VM
+          default: cloud-user
+
+        vm_password:
+          title: VM Password
+          type: string
+          description: Default login password (will be set via cloud-init)
+          default: redhat
+          ui:widget: password
+
+        ssh_public_key:
+          title: SSH Public Key
+          type: string
+          description: Optional SSH public key for passwordless access
+          ui:widget: textarea
+          ui:options:
+            rows: 3
+
+    - title: Review and Approve
+      description: |
+        ## Approve VM Provisioning Request
+
+        Please review the VM specification carefully. By clicking **Create**, you are
+        approving the provisioning of a virtual machine in your OpenShift cluster.
+
+        Once approved, the VM will be automatically provisioned via Ansible Automation Platform.
+      properties:
+        approved:
+          title: I approve this VM provisioning request and understand it will consume cluster resources
+          type: boolean
+          default: false
+          ui:widget: checkbox
+      required:
+        - approved
+
+  steps:
+    - id: trigger-aap
+      name: Submit VM Provisioning Request to Ansible
+      action: http:backstage:request
+      input:
+        method: POST
+        path: /proxy/aap/api/controller/v2/job_templates/9/launch/
+        headers:
+          content-type: application/json
+        body:
+          extra_vars:
+            vm_name: ${{ parameters.vm_name }}
+            vm_namespace: ${{ parameters.vm_namespace }}
+            vm_cpus: ${{ parameters.vm_cpus }}
+            vm_memory: ${{ parameters.vm_memory }}
+            vm_disk_size: ${{ parameters.vm_disk_size }}
+            rhel_version: "${{ parameters.rhel_version }}"
+            vm_user: ${{ parameters.vm_user }}
+            vm_password: ${{ parameters.vm_password }}
+            ssh_public_key: "${{ parameters.ssh_public_key | default('') }}"
+
+    - id: log-job
+      name: Log AAP Job Details
+      action: debug:log
+      input:
+        message: "VM provisioning job submitted. AAP Job ID: ${{ steps['trigger-aap'].output.body.id }}"
+
+  output:
+    links:
+      - title: View Provisioning Job in AAP
+        url: https://aap-platform-ansible-automation-platform.apps.cluster-k5zwd.dyn.redhatworkshops.io/#/jobs/playbook/${{ steps['trigger-aap'].output.body.id }}/details
+        icon: dashboard
+      - title: View VM in OpenShift Console
+        url: https://console-openshift-console.apps.cluster-k5zwd.dyn.redhatworkshops.io/k8s/ns/${{ parameters.vm_namespace }}/kubevirt.io~v1~VirtualMachine/${{ parameters.vm_name }}
+        icon: dashboard
+    text:
+      - title: VM Provisioning Summary
+        content: |
+          ## VM "${{ parameters.vm_name }}" Approved and Provisioning Started
+
+          | Parameter | Value |
+          |-----------|-------|
+          | RHEL Version | ${{ parameters.rhel_version }} |
+          | CPUs | ${{ parameters.vm_cpus }} |
+          | Memory | ${{ parameters.vm_memory }} |
+          | Disk | ${{ parameters.vm_disk_size }} |
+          | Namespace | ${{ parameters.vm_namespace }} |
+
+          AAP Job ID: **${{ steps['trigger-aap'].output.body.id }}**
+
+          **Once ready, SSH access:**
+          ```
+          ssh ${{ parameters.vm_user }}@${{ parameters.vm_name }}-ssh.${{ parameters.vm_namespace }}.svc.cluster.local
+          ```
