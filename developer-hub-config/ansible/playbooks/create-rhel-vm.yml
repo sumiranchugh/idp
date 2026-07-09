@@ -113,17 +113,9 @@
               # Final message
               final_message: "RHEL VM {{ vm_name }} is ready!"
 
-    - name: Debug VM variables before creation
-      ansible.builtin.debug:
-        msg:
-          - "vm_name: {{ vm_name }} (type: {{ vm_name | type_debug }})"
-          - "vm_cpus: {{ vm_cpus }} (type: {{ vm_cpus | type_debug }})"
-          - "rhel_version: {{ rhel_version }} (type: {{ rhel_version | type_debug }})"
-
-    - name: Create VirtualMachine
-      kubernetes.core.k8s:
-        state: present
-        definition:
+    - name: Build VirtualMachine definition
+      set_fact:
+        vm_definition:
           apiVersion: kubevirt.io/v1
           kind: VirtualMachine
           metadata:
@@ -136,8 +128,8 @@
               kubevirt.io/vm: "{{ vm_name }}"
             annotations:
               description: "RHEL {{ rhel_version }} VM - {{ vm_cpus }} CPUs, {{ vm_memory }} RAM"
-              created-by: "ansible-automation-platform"
-              created-from: "developer-hub"
+              created-by: ansible-automation-platform
+              created-from: developer-hub
           spec:
             running: true
             template:
@@ -182,6 +174,15 @@
                     cloudInitNoCloud:
                       secretRef:
                         name: "{{ vm_name }}-cloudinit"
+
+    - name: Debug VM definition
+      ansible.builtin.debug:
+        var: vm_definition
+
+    - name: Create VirtualMachine
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ vm_definition }}"
       register: vm_created
 
     - name: Wait for VM to be ready
