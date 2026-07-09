@@ -1,0 +1,141 @@
+{
+  "_comment": "ServiceNow Flow Designer - VM Provisioning Approval Workflow",
+  "_comment2": "Import via: Flow Designer → Import → paste this JSON",
+  "_comment3": "Replace all placeholder sys_ids after import",
+
+  "flow": {
+    "name": "VM Provisioning Approval",
+    "description": "Approval workflow for RHEL VM provisioning requests from Red Hat Developer Hub. On approval, triggers Ansible Automation Platform to provision the VM.",
+    "trigger": {
+      "type": "Service Catalog",
+      "catalog_item": "Provision RHEL Virtual Machine",
+      "when": "Always"
+    },
+    "variables": {
+      "vm_name":      "{{trigger.request_item.vm_name}}",
+      "vm_namespace": "{{trigger.request_item.vm_namespace}}",
+      "vm_cpus":      "{{trigger.request_item.vm_cpus}}",
+      "vm_memory":    "{{trigger.request_item.vm_memory}}",
+      "vm_disk_size": "{{trigger.request_item.vm_disk_size}}",
+      "rhel_version": "{{trigger.request_item.rhel_version}}",
+      "vm_user":      "{{trigger.request_item.vm_user}}"
+    },
+    "steps": [
+      {
+        "step": 1,
+        "type": "Send Notification",
+        "name": "Notify requester - request received",
+        "config": {
+          "to": "{{trigger.requested_for.email}}",
+          "subject": "VM Request Received - {{trigger.request_item.vm_name}}",
+          "body": "Your request to provision a RHEL VM has been submitted and is awaiting manager approval.\n\nVM Details:\n- Name: {{trigger.request_item.vm_name}}\n- RHEL Version: {{trigger.request_item.rhel_version}}\n- CPUs: {{trigger.request_item.vm_cpus}}\n- Memory: {{trigger.request_item.vm_memory}}\n- Disk: {{trigger.request_item.vm_disk_size}}\n- Namespace: {{trigger.request_item.vm_namespace}}\n\nYou will be notified once a decision is made.\n\nView request: {{trigger.request.url}}"
+        }
+      },
+      {
+        "step": 2,
+        "type": "Ask for Approval",
+        "name": "Manager Approval",
+        "config": {
+          "approval_field": "approval",
+          "approvers": [
+            {"type": "manager_of", "user": "{{trigger.requested_for}}"}
+          ],
+          "approval_message": "VM Provisioning Request requires your approval.\n\nRequested by: {{trigger.requested_for.name}}\nVM Name: {{trigger.request_item.vm_name}}\nJustification: {{trigger.request_item.justification}}\n\nVM Spec:\n- RHEL {{trigger.request_item.rhel_version}}\n- {{trigger.request_item.vm_cpus}} CPUs\n- {{trigger.request_item.vm_memory}} RAM\n- {{trigger.request_item.vm_disk_size}} Disk\n- Namespace: {{trigger.request_item.vm_namespace}}\n\nPlease review and approve or reject.",
+          "due_date": "+3 days"
+        }
+      },
+      {
+        "step": 3,
+        "type": "If",
+        "name": "Check approval decision",
+        "condition": "{{steps.2.approval_state}} == 'approved'",
+        "then": [
+          {
+            "step": "3a",
+            "type": "REST Step",
+            "name": "Trigger AAP - Provision VM",
+            "config": {
+              "rest_message": "AAP - Launch VM Provisioning Job",
+              "http_method": "launch",
+              "request_variables": {
+                "vm_name":      "{{trigger.request_item.vm_name}}",
+                "vm_namespace": "{{trigger.request_item.vm_namespace}}",
+                "vm_cpus":      "{{trigger.request_item.vm_cpus}}",
+                "vm_memory":    "{{trigger.request_item.vm_memory}}",
+                "vm_disk_size": "{{trigger.request_item.vm_disk_size}}",
+                "rhel_version": "{{trigger.request_item.rhel_version}}",
+                "vm_user":      "{{trigger.request_item.vm_user}}"
+              }
+            }
+          },
+          {
+            "step": "3b",
+            "type": "Update Record",
+            "name": "Update request - provisioning started",
+            "config": {
+              "table": "sc_request",
+              "record": "{{trigger.request}}",
+              "fields": {
+                "state": "3",
+                "work_notes": "VM provisioning started in Ansible Automation Platform.\nAAP Job response: {{steps.3a.response_body}}\n\nEstimated completion: 5-10 minutes."
+              }
+            }
+          },
+          {
+            "step": "3c",
+            "type": "Send Notification",
+            "name": "Notify requester - approved and provisioning",
+            "config": {
+              "to": "{{trigger.requested_for.email}}",
+              "subject": "VM Request Approved - Provisioning Started for {{trigger.request_item.vm_name}}",
+              "body": "Good news! Your VM provisioning request has been approved and provisioning has started.\n\nVM Details:\n- Name: {{trigger.request_item.vm_name}}\n- RHEL Version: {{trigger.request_item.rhel_version}}\n- CPUs: {{trigger.request_item.vm_cpus}}\n- Memory: {{trigger.request_item.vm_memory}}\n- Disk: {{trigger.request_item.vm_disk_size}}\n- Namespace: {{trigger.request_item.vm_namespace}}\n\nOnce ready (5-10 min), SSH access:\nssh {{trigger.request_item.vm_user}}@{{trigger.request_item.vm_name}}-ssh.{{trigger.request_item.vm_namespace}}.svc.cluster.local\n\nView in OpenShift: https://console-openshift-console.apps.cluster-k5zwd.dyn.redhatworkshops.io/k8s/ns/{{trigger.request_item.vm_namespace}}/kubevirt.io~v1~VirtualMachine/{{trigger.request_item.vm_name}}"
+            }
+          }
+        ],
+        "else": [
+          {
+            "step": "3d",
+            "type": "Update Record",
+            "name": "Update request - rejected",
+            "config": {
+              "table": "sc_request",
+              "record": "{{trigger.request}}",
+              "fields": {
+                "state": "4",
+                "work_notes": "VM provisioning request was rejected by approver."
+              }
+            }
+          },
+          {
+            "step": "3e",
+            "type": "Send Notification",
+            "name": "Notify requester - rejected",
+            "config": {
+              "to": "{{trigger.requested_for.email}}",
+              "subject": "VM Request Rejected - {{trigger.request_item.vm_name}}",
+              "body": "Your VM provisioning request for '{{trigger.request_item.vm_name}}' was not approved.\n\nPlease contact your manager for more details, or submit a new request with updated justification.\n\nView request: {{trigger.request.url}}"
+            }
+          }
+        ]
+      }
+    ]
+  },
+
+  "_manual_import_steps": {
+    "description": "Since Flow Designer JSON import is limited, follow these steps in ServiceNow UI",
+    "steps": [
+      "1. Go to Flow Designer (search 'Flow Designer' in nav)",
+      "2. Click 'New' → 'Flow'",
+      "3. Name: 'VM Provisioning Approval'",
+      "4. Add Trigger: Service Catalog → select 'Provision RHEL Virtual Machine' item",
+      "5. Add Action: 'Send Notification' → configure 'request received' email to requester",
+      "6. Add Action: 'Ask for Approval' → Approvers: Manager of Requested For",
+      "7. Add Flow Logic: 'If' → Approval State is 'Approved'",
+      "8. In 'If' branch: Add Action → 'REST Step' → Message: 'AAP - Launch VM Provisioning Job' → Method: 'launch'",
+      "9. Map variables from catalog item to REST step input vars",
+      "10. Add 'Send Notification' for approved email",
+      "11. In 'Else' branch: Update request state + rejected email",
+      "12. Click 'Activate' to enable the flow"
+    ]
+  }
+}
