@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "VM Provisioning Output",
+  "type": "object",
+  "properties": {
+    "status": { "type": "string", "enum": ["provisioning", "rejected"] },
+    "vm_name": { "type": "string" },
+    "vm_namespace": { "type": "string" },
+    "sn_request": { "type": "string" },
+    "aap_job_id": { "type": "string" },
+    "ssh_service": { "type": "string" },
+    "message": { "type": "string" }
+  }
+}

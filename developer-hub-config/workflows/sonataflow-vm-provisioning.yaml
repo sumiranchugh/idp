@@ -1,0 +1,131 @@
+---
+# SonataFlow workflow — deployed in same namespace as RHDH
+# so it can use the SonataFlowPlatform provisioned by the Orchestrator flavour
+apiVersion: sonataflow.org/v1alpha08
+kind: SonataFlow
+metadata:
+  name: vm-provisioning-approval
+  namespace: developer-hub
+  annotations:
+    sonataflow.org/description: >
+      RHEL VM provisioning with ServiceNow approval and AAP automation.
+      Triggered from Red Hat Developer Hub Orchestrator.
+    sonataflow.org/profile: preview
+spec:
+  flow:
+    id: vm-provisioning-approval
+    version: '1.0'
+    specVersion: '0.8'
+    name: RHEL VM Provisioning with ServiceNow Approval
+    description: >
+      Creates a ServiceNow approval request, waits for manager approval,
+      then provisions a RHEL VM via Ansible Automation Platform.
+    annotations:
+      - 'workflow-type:infrastructure'
+    dataInputSchema:
+      schema: schemas/vm-request.input-schema.json
+      failOnValidationErrors: false
+
+    functions:
+      - name: createSNIncident
+        operation: >
+          post http://servicenow-proxy/api/now/table/incident
+        type: rest
+      - name: triggerAAP
+        operation: >
+          post http://aap-proxy/api/controller/v2/job_templates/9/launch/
+        type: rest
+
+    events:
+      - name: approvalDecision
+        source: servicenow
+        type: vm.approval.decision
+        correlation:
+          - contextAttributeName: snincidentsysid
+
+    states:
+      - name: CreateSNRequest
+        type: operation
+        actions:
+          - name: create-incident
+            functionRef:
+              refName: createSNIncident
+              arguments:
+                short_description: '${ "VM Request: " + .vm_name + " (RHEL " + .rhel_version + ")" }'
+                description: '${ "Provisioning request from RHDH Orchestrator.\n\nVM: " + .vm_name + "\nNamespace: " + .vm_namespace + "\nRHEL: " + .rhel_version + "\nCPUs: " + (.vm_cpus|tostring) + "\nMemory: " + .vm_memory + "\nDisk: " + .vm_disk_size + "\nWorkflow: " + $WORKFLOW.instanceId }'
+                category: infrastructure
+                approval: requested
+                state: "1"
+                u_vm_name: '${ .vm_name }'
+                u_vm_namespace: '${ .vm_namespace }'
+                u_vm_rhel_version: '${ .rhel_version }'
+                u_vm_cpus: '${ .vm_cpus | tostring }'
+                u_vm_memory: '${ .vm_memory }'
+                u_vm_disk_size: '${ .vm_disk_size }'
+                u_vm_user: '${ .vm_user }'
+                u_aap_triggered: "false"
+                u_workflow_instance: '${ $WORKFLOW.instanceId }'
+            actionDataFilter:
+              results: .result
+              toStateData: .snRequest
+        stateDataFilter:
+          output: '${ . + { "snSysId": .snRequest.sys_id, "snNumber": .snRequest.number } }'
+        transition: WaitForApproval
+
+      - name: WaitForApproval
+        type: callback
+        action:
+          functionRef:
+            refName: createSNIncident
+            arguments: {}
+        eventRef: approvalDecision
+        eventDataFilter:
+          data: '${ . }'
+          toStateData: .approvalResult
+        transition: CheckApproval
+
+      - name: CheckApproval
+        type: switch
+        dataConditions:
+          - condition: '${ .approvalResult.approved == true }'
+            transition: ProvisionVM
+            name: Approved
+          - condition: '${ .approvalResult.approved == false }'
+            transition: ApprovalRejected
+            name: Rejected
+        defaultCondition:
+          transition: ApprovalRejected
+
+      - name: ProvisionVM
+        type: operation
+        actions:
+          - name: trigger-aap
+            functionRef:
+              refName: triggerAAP
+              arguments:
+                extra_vars:
+                  vm_name: '${ .vm_name }'
+                  vm_namespace: '${ .vm_namespace }'
+                  vm_cpus: '${ .vm_cpus }'
+                  vm_memory: '${ .vm_memory }'
+                  vm_disk_size: '${ .vm_disk_size }'
+                  rhel_version: '${ .rhel_version }'
+                  vm_user: '${ .vm_user }'
+                  vm_password: redhat
+                  sn_request_number: '${ .snNumber }'
+            actionDataFilter:
+              results: .result
+              toStateData: .aapJob
+        stateDataFilter:
+          output: '${ { "status": "provisioning", "vm_name": .vm_name, "vm_namespace": .vm_namespace, "sn_request": .snNumber, "aap_job_id": (.aapJob.id | tostring), "ssh_service": (.vm_name + "-ssh." + .vm_namespace + ".svc.cluster.local") } }'
+        end:
+          terminate: true
+
+      - name: ApprovalRejected
+        type: inject
+        data:
+          status: rejected
+        stateDataFilter:
+          output: '${ { "status": "rejected", "vm_name": .vm_name, "sn_request": .snNumber, "message": "Request rejected by approver in ServiceNow" } }'
+        end:
+          terminate: true

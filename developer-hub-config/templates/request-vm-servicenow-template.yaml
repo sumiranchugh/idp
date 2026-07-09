@@ -142,57 +142,39 @@ spec:
         > VM provisioning takes approximately 5–10 minutes after approval.
 
   steps:
-    - id: create-sn-incident
-      name: Create ServiceNow VM Request (Incident)
-      action: servicenow:now:table:createRecord
+    - id: start-workflow
+      name: Start VM Provisioning Orchestrator Workflow
+      action: orchestrator:workflow:run
       input:
-        tableName: incident
-        requestBody:
-          short_description: "VM Request: ${{ parameters.vm_name }} (RHEL ${{ parameters.rhel_version }})"
-          description: |
-            VM Provisioning Request from Red Hat Developer Hub
+        workflowId: vm-provisioning-approval
+        parameters:
+          vm_name: ${{ parameters.vm_name }}
+          vm_namespace: ${{ parameters.vm_namespace }}
+          rhel_version: "${{ parameters.rhel_version }}"
+          vm_cpus: ${{ parameters.vm_cpus }}
+          vm_memory: ${{ parameters.vm_memory }}
+          vm_disk_size: ${{ parameters.vm_disk_size }}
+          vm_user: ${{ parameters.vm_user }}
+          ssh_public_key: "${{ parameters.ssh_public_key | default('') }}"
+          justification: ${{ parameters.justification }}
 
-            VM Specification:
-              Name:          ${{ parameters.vm_name }}
-              Namespace:     ${{ parameters.vm_namespace }}
-              RHEL Version:  ${{ parameters.rhel_version }}
-              CPUs:          ${{ parameters.vm_cpus }}
-              Memory:        ${{ parameters.vm_memory }}
-              Disk:          ${{ parameters.vm_disk_size }}
-              User:          ${{ parameters.vm_user }}
-
-            Business Justification:
-            ${{ parameters.justification }}
-
-            Submitted via: Red Hat Developer Hub
-          category: infrastructure
-          impact: "3"
-          urgency: "3"
-          state: "1"
-          approval: requested
-          u_vm_name: ${{ parameters.vm_name }}
-          u_vm_namespace: ${{ parameters.vm_namespace }}
-          u_vm_rhel_version: "${{ parameters.rhel_version }}"
-          u_vm_cpus: "${{ parameters.vm_cpus }}"
-          u_vm_memory: ${{ parameters.vm_memory }}
-          u_vm_disk_size: ${{ parameters.vm_disk_size }}
-          u_vm_user: ${{ parameters.vm_user }}
-          u_aap_triggered: "false"
-
-    - id: log-ticket
-      name: Log ServiceNow Ticket
+    - id: log-workflow
+      name: Log Workflow Started
       action: debug:log
       input:
         message: |
-          ServiceNow incident created!
-          sys_id: ${{ steps['create-sn-incident'].output.result.sys_id }}
-          Number: ${{ steps['create-sn-incident'].output.result.number }}
-          State: Awaiting manager approval
+          Orchestrator workflow started!
+          Workflow ID: vm-provisioning-approval
+          Instance: ${{ steps['start-workflow'].output.workflowInstanceId }}
+          The workflow will:
+            1. Create a ServiceNow approval request
+            2. Notify your manager for approval
+            3. On approval — provision the VM via AAP automatically
 
   output:
     links:
-      - title: View Request in ServiceNow
-        url: https://dev423121.service-now.com/incident.do?sys_id=${{ steps['create-sn-incident'].output.result.sys_id }}
+      - title: Track Workflow in Orchestrator
+        url: /orchestrator/instances/${{ steps['start-workflow'].output.workflowInstanceId }}
         icon: dashboard
       - title: ServiceNow Service Portal
         url: https://dev423121.service-now.com/sp

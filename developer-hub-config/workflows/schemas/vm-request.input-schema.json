@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RHEL VM Provisioning Request",
+  "description": "Input parameters for the VM provisioning workflow",
+  "type": "object",
+  "required": ["vm_name", "vm_namespace", "rhel_version", "vm_cpus", "vm_memory", "vm_disk_size"],
+  "properties": {
+    "vm_name": {
+      "type": "string",
+      "title": "VM Name",
+      "description": "Name for the virtual machine",
+      "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+    },
+    "vm_namespace": {
+      "type": "string",
+      "title": "Namespace",
+      "default": "vms"
+    },
+    "rhel_version": {
+      "type": "string",
+      "title": "RHEL Version",
+      "enum": ["9", "8"],
+      "default": "9"
+    },
+    "vm_cpus": {
+      "type": "integer",
+      "title": "CPU Cores",
+      "default": 2,
+      "minimum": 1,
+      "maximum": 16
+    },
+    "vm_memory": {
+      "type": "string",
+      "title": "Memory",
+      "default": "4Gi"
+    },
+    "vm_disk_size": {
+      "type": "string",
+      "title": "Disk Size",
+      "default": "30Gi"
+    },
+    "vm_user": {
+      "type": "string",
+      "title": "VM Username",
+      "default": "cloud-user"
+    },
+    "ssh_public_key": {
+      "type": "string",
+      "title": "SSH Public Key",
+      "default": ""
+    },
+    "justification": {
+      "type": "string",
+      "title": "Business Justification"
+    }
+  }
+}

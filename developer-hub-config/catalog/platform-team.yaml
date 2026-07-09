@@ -1,0 +1,32 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: platform-team
+  namespace: default
+  description: Platform engineering team responsible for infrastructure, IDP, and VM provisioning
+  annotations:
+    backstage.io/managed-by-location: url:https://github.com/sumiranchugh/idp/blob/main/developer-hub-config/catalog/platform-team.yaml
+spec:
+  type: team
+  profile:
+    displayName: Platform Team
+    email: platform@example.com
+  children: []
+  members:
+    - sumiranchugh
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: sumiranchugh
+  namespace: default
+  description: Platform team lead — super admin access
+  annotations:
+    backstage.io/managed-by-location: url:https://github.com/sumiranchugh/idp/blob/main/developer-hub-config/catalog/platform-team.yaml
+spec:
+  profile:
+    displayName: Sumir Anchugh
+    email: sumiranchugh@example.com
+  memberOf:
+    - platform-team
