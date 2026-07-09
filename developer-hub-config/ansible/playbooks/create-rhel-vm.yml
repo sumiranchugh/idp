@@ -113,6 +113,13 @@
               # Final message
               final_message: "RHEL VM {{ vm_name }} is ready!"
 
+    - name: Debug VM variables before creation
+      ansible.builtin.debug:
+        msg:
+          - "vm_name: {{ vm_name }} (type: {{ vm_name | type_debug }})"
+          - "vm_cpus: {{ vm_cpus }} (type: {{ vm_cpus | type_debug }})"
+          - "rhel_version: {{ rhel_version }} (type: {{ rhel_version | type_debug }})"
+
     - name: Create VirtualMachine
       kubernetes.core.k8s:
         state: present
