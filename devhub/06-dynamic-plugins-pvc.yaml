@@ -1,0 +1,24 @@
+---
+# PersistentVolumeClaim for caching dynamic plugins
+# This speeds up pod restarts by ~50% (from 5-6 min to 2-3 min)
+#
+# Usage:
+#   1. Update storageClassName to match your cluster
+#   2. Apply: oc apply -f 06-dynamic-plugins-pvc.yaml
+#   3. Uncomment extraVolumes section in 05-backstage-instance.yaml
+#   4. Apply: oc apply -f 05-backstage-instance.yaml
+#
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dynamic-plugins-root
+  namespace: developer-hub
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  # Update this to match your cluster's storage class
+  # Check available storage classes: oc get storageclass
+  storageClassName: gp3-csi

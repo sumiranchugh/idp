@@ -1,0 +1,330 @@
+---
+apiVersion: rhdh.redhat.com/v1alpha5
+kind: Backstage
+metadata:
+  name: developer-hub
+  namespace: developer-hub
+spec:
+  # Enable Orchestrator via flavours (auto-configures all Orchestrator plugins + SonataFlow)
+  flavours:
+  - name: orchestrator
+    enabled: true
+
+  # Replace ephemeral dynamic-plugins-root with a PVC for plugin caching
+  # Doc: must use $patch: replace to override the default emptyDir
+  deployment:
+    patch:
+      spec:
+        template:
+          spec:
+            volumes:
+            - $patch: replace
+              name: dynamic-plugins-root
+              persistentVolumeClaim:
+                claimName: dynamic-plugins-root
+
+  application:
+    replicas: 1
+    dynamicPluginsConfigMapName: rhdh-custom-dynamic-plugins
+    imagePullSecrets:
+      - rhdh-pull-secret
+    route:
+      enabled: true
+      tls:
+        enabled: true
+        termination: edge
+        insecureEdgeTerminationPolicy: Redirect
+
+    extraEnvs:
+      secrets:
+        - name: backstage-secrets
+        - name: backstage-psql-secret-developer-hub
+        - name: backstage-github-auth
+        - name: backstage-aap-secret
+        - name: backstage-servicenow-secret
+        - name: backstage-external-token-secret
+
+    # Mount RBAC policy CSV — extraFiles is the correct doc-supported way
+    extraFiles:
+      configMaps:
+        - name: rbac-policy
+          key: rbac-policy.csv
+          mountPath: /opt/app-root/src
+          containers:
+            - backstage-backend
+
+    appConfig:
+      mountPath: /opt/app-root/src
+      configMaps:
+        - name: app-config-rhdh
+
+    # PVC for faster restarts - caches downloaded plugins
+    # Reduces restart time from 5-6 min to 2-3 min
+
+  database:
+    enableLocalDb: true
+    # For production, use external PostgreSQL:
+    # enableLocalDb: false
+    # host: postgresql.example.com
+    # port: 5432
+    # user: backstage
+    # database: backstage
+    # passwordSecret:
+    #   name: backstage-db-secret
+    #   key: password
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config-rhdh
+  namespace: developer-hub
+data:
+  app-config-rhdh.yaml: |
+    app:
+      title: Red Hat Developer Hub
+      baseUrl: https://backstage-developer-hub-developer-hub.apps.cluster-k5zwd.dyn.redhatworkshops.io
+
+    organization:
+      name: My Organization
+
+    backend:
+      auth:
+        keys:
+          - secret: ${BACKEND_SECRET}
+        externalAccess:
+          - type: static
+            options:
+              token: ${SN_TO_RHDH_TOKEN}
+              subject: servicenow-integration
+      baseUrl: https://backstage-developer-hub-developer-hub.apps.cluster-k5zwd.dyn.redhatworkshops.io
+      cors:
+        origin: https://backstage-developer-hub-developer-hub.apps.cluster-k5zwd.dyn.redhatworkshops.io
+        credentials: true
+
+      database:
+        client: pg
+        connection:
+          host: ${POSTGRES_HOST}
+          port: ${POSTGRES_PORT}
+          user: ${POSTGRES_USER}
+          password: ${POSTGRES_PASSWORD}
+          database: backstage_plugin_catalog
+
+    # GitHub OAuth Authentication - allow login without catalog user
+    auth:
+      environment: production
+      session:
+        secret: ${BACKEND_SECRET}
+      providers:
+        github:
+          production:
+            clientId: ${GITHUB_CLIENT_ID}
+            clientSecret: ${GITHUB_CLIENT_SECRET}
+            signIn:
+              resolvers:
+                - resolver: usernameMatchingUserEntityName
+                  dangerouslyAllowSignInWithoutUserInCatalog: true
+
+    # Permission policy - sumiranchugh is super admin, all others get regular admin
+    # ServiceNow connection — credentials from backstage-servicenow-secret
+    # Plugin reads these from app-config (community OCI plugin 1.10--2.15.1)
+    servicenow:
+      baseUrl: ${SERVICENOW_BASE_URL}
+      instanceUrl: ${SERVICENOW_BASE_URL}
+      username: ${SERVICENOW_USERNAME}
+      password: ${SERVICENOW_PASSWORD}
+      basicAuth:
+        username: ${SERVICENOW_USERNAME}
+        password: ${SERVICENOW_PASSWORD}
+
+    permission:
+      enabled: true
+      rbac:
+        policies-csv-file: /opt/app-root/src/rbac-policy.csv
+        policyFileReload: true
+        pluginsWithPermission:
+          - orchestrator
+        admin:
+          users:
+            - name: user:default/sumiranchugh
+
+    # Proxy configuration
+    proxy:
+      endpoints:
+        # AAP proxy - used by direct-provision template
+        /aap:
+          target: ${AAP_BASE_URL}
+          changeOrigin: true
+          secure: false
+          headers:
+            Authorization: Bearer ${AAP_TOKEN}
+        # ServiceNow proxy - used by approval-based template
+        /servicenow:
+          target: ${SN_BASE_URL}
+          changeOrigin: true
+          secure: true
+          headers:
+            Authorization: Basic ${SN_BASIC_AUTH}
+
+    # Ansible/AAP plugin configuration
+    ansible:
+      aap:
+        baseURL: ${AAP_BASE_URL}
+        token: ${AAP_TOKEN}
+
+    catalog:
+      import:
+        entityFilename: catalog-info.yaml
+      rules:
+        - allow: [Component, System, API, Resource, Location, Template, User, Group]
+
+      locations:
+        # Default templates
+        - type: url
+          target: https://github.com/janus-idp/software-templates/blob/main/showcase-templates.yaml
+        # VM provisioning template (direct — no approval)
+        - type: url
+          target: https://github.com/sumiranchugh/idp/blob/main/templates/create-vm-template.yaml
+        # VM request template (Orchestrator + ServiceNow approval workflow)
+        - type: url
+          target: https://github.com/sumiranchugh/idp/blob/main/templates/request-vm-servicenow-template.yaml
+        # Platform team group + users
+        - type: url
+          target: https://github.com/sumiranchugh/idp/blob/main/catalog/platform-team.yaml
+        # VM infrastructure component (has servicenow.com/entity-id annotation for SN tab)
+        - type: url
+          target: https://github.com/sumiranchugh/idp/blob/main/catalog/vm-infrastructure.yaml
+
+      # Auto-create user entities for OAuth users
+      orphanStrategy: delete
+
+      providers:
+        ocm:
+          env:
+            name: production
+            kubernetesPluginRef: local-cluster
+            schedule:
+              frequency:
+                seconds: 10
+              timeout:
+                seconds: 60
+
+    # Kubernetes/OpenShift integration
+    kubernetes:
+      serviceLocatorMethod:
+        type: multiTenant
+      clusterLocatorMethods:
+        - type: config
+          clusters:
+            - url: https://api.cluster-k5zwd.dyn.redhatworkshops.io:6443
+              name: local-cluster
+              authProvider: serviceAccount
+              skipTLSVerify: true
+              serviceAccountToken: ${K8S_SERVICE_ACCOUNT_TOKEN}
+
+    # Orchestrator Plugin Configuration
+    orchestrator:
+      # Note: Configure dataIndexService URL if using external workflow engine
+      # dataIndexService:
+      #   url: http://workflow-service.namespace.svc.cluster.local
+      enabled: true
+
+    # ArgoCD Plugin Configuration
+    argocd:
+      appLocatorMethods:
+        - type: config
+          instances:
+            - name: argocd
+              url: https://argocd-server.argocd.svc.cluster.local
+              # Optional: username and token for authentication
+              # username: ${ARGOCD_USERNAME}
+              # password: ${ARGOCD_PASSWORD}
+
+    # Dynamic Plugins Configuration
+    dynamicPlugins:
+      frontend:
+        janus-idp.backstage-plugin-orchestrator:
+          entityTabs:
+            - path: /workflows
+              title: Workflows
+              mountPoint: entity.page.workflows
+          mountPoints:
+            - mountPoint: entity.page.overview/cards
+              importName: OrchestratorCard
+              config:
+                layout:
+                  gridColumnEnd:
+                    lg: "span 8"
+                    md: "span 6"
+                    xs: "span 4"
+            - mountPoint: entity.page.workflows/cards
+              importName: EntityWorkflowRunsTabContent
+              config:
+                if:
+                  allOf:
+                    - hasAnnotation: orchestrator.backstage.io/workflow-id
+            - mountPoint: search.page.types
+              importName: OrchestratorSearchResultListItem
+
+    # Enable required plugins
+    enabled:
+      kubernetes: true
+      techdocs: true
+      argocd: true
+      github: false
+      sonarqube: false
+      orchestrator: true
+      ocm: true
+
+---
+# ServiceAccount for Kubernetes plugin
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backstage-kubernetes
+  namespace: developer-hub
+
+---
+# ClusterRole for Kubernetes plugin
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: backstage-kubernetes-reader
+rules:
+  - apiGroups:
+      - '*'
+    resources:
+      - pods
+      - pods/log
+      - services
+      - configmaps
+      - deployments
+      - replicasets
+      - horizontalpodautoscalers
+      - ingresses
+      - statefulsets
+      - daemonsets
+      - cronjobs
+      - jobs
+      - limitranges
+    verbs:
+      - get
+      - list
+      - watch
+
+---
+# ClusterRoleBinding for Kubernetes plugin
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: backstage-kubernetes-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: backstage-kubernetes-reader
+subjects:
+  - kind: ServiceAccount
+    name: backstage-kubernetes
+    namespace: developer-hub
+

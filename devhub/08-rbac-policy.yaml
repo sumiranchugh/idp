@@ -1,0 +1,47 @@
+---
+# RBAC Policy ConfigMap - All authenticated users are admins
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rbac-policy
+  namespace: developer-hub
+data:
+  rbac-policy.csv: |
+    # ── Catalog permissions ───────────────────────────────────────────────
+    p, role:default/admin, catalog-entity, read, allow
+    p, role:default/admin, catalog-entity, create, allow
+    p, role:default/admin, catalog-entity, update, allow
+    p, role:default/admin, catalog-entity, delete, allow
+    p, role:default/admin, catalog.entity.create, create, allow
+    p, role:default/admin, catalog.entity.delete, delete, allow
+    p, role:default/admin, catalog.entity.refresh, update, allow
+    p, role:default/admin, catalog.location.create, create, allow
+    p, role:default/admin, catalog.location.delete, delete, allow
+
+    # ── Scaffolder permissions ────────────────────────────────────────────
+    p, role:default/admin, scaffolder-template, read, allow
+    p, role:default/admin, scaffolder-template, use, allow
+    p, role:default/admin, scaffolder-action, use, allow
+    p, role:default/admin, scaffolder.task.create, create, allow
+    p, role:default/admin, scaffolder.task.read, read, allow
+    p, role:default/admin, scaffolder.task.cancel, use, allow
+
+    # ── Orchestrator permissions ──────────────────────────────────────────
+    p, role:default/admin, orchestrator.workflow, read, allow
+    p, role:default/admin, orchestrator.workflow.use, update, allow
+    p, role:default/admin, orchestrator.workflowAdminView, read, allow
+    p, role:default/admin, orchestrator.instanceAdminView, read, allow
+
+    # ── Kubernetes permissions ────────────────────────────────────────────
+    p, role:default/admin, kubernetes-cluster, read, allow
+
+    # ── RBAC management (admin UI) ────────────────────────────────────────
+    p, role:default/admin, policy.entity.read, read, allow
+    p, role:default/admin, policy.entity.create, create, allow
+    p, role:default/admin, policy.entity.update, update, allow
+    p, role:default/admin, policy.entity.delete, delete, allow
+
+    # ── Role assignments ──────────────────────────────────────────────────
+    # sumiranchugh: super admin (rbac_admin = manage RBAC + full admin role)
+    g, user:default/sumiranchugh, role:default/rbac_admin
+    g, user:default/sumiranchugh, role:default/admin

@@ -1,0 +1,19 @@
+# Ignore actual secret files with real values
+# Keep *.yaml.example and *.yaml.template (safe to commit)
+secrets/*.yaml
+!secrets/*.yaml.example
+!secrets/*.yaml.template
+
+# Environment files
+.env
+*.env
+
+# Backup files
+*.bak
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
