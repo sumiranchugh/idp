@@ -33,7 +33,9 @@ data:
     p, role:default/admin, orchestrator.instanceAdminView, read, allow
 
     # ── Kubernetes permissions ────────────────────────────────────────────
+    # All authenticated users can view the Kubernetes/VM tab on entity pages
     p, role:default/admin, kubernetes-cluster, read, allow
+    p, role:default/user, kubernetes-cluster, read, allow
 
     # ── RBAC management (admin UI) ────────────────────────────────────────
     p, role:default/admin, policy.entity.read, read, allow
@@ -45,3 +47,6 @@ data:
     # sumiranchugh: super admin (rbac_admin = manage RBAC + full admin role)
     g, user:default/sumiranchugh, role:default/rbac_admin
     g, user:default/sumiranchugh, role:default/admin
+
+    # All authenticated users get the basic user role
+    g, user:default/*, role:default/user

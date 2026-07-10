@@ -233,9 +233,8 @@ data:
 
     # Orchestrator Plugin Configuration
     orchestrator:
-      # Note: Configure dataIndexService URL if using external workflow engine
-      # dataIndexService:
-      #   url: http://workflow-service.namespace.svc.cluster.local
+      dataIndexService:
+        url: http://sonataflow-platform-data-index-service.developer-hub
       enabled: true
 
     # ArgoCD Plugin Configuration
