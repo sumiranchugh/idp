@@ -244,6 +244,23 @@ spec:
           sncrsysid: ${{ steps['create-sn-cr'].output.result.sys_id }}
           sn_cr_number: ${{ steps['create-sn-cr'].output.result.number }}
 
+    # Step 5: Write workflow instance ID back to the SN CR
+    # The Business Rule includes this as ce-kogitoprocinstid in the CloudEvent so
+    # Kogito fully re-establishes process context on callback resume — without it
+    # node exit events are sent without a process instance ID and the Data Index
+    # drops them silently, leaving the Orchestrator UI stuck at the callback state.
+    - id: update-cr-with-instance-id
+      name: Store Workflow Instance ID in ServiceNow CR
+      action: http:backstage:request
+      input:
+        method: PATCH
+        path: /api/proxy/servicenow/api/now/table/change_request/${{ steps['create-sn-cr'].output.result.sys_id }}
+        headers:
+          Content-Type: application/json
+          Accept: application/json
+        body:
+          u_workflow_instance_id: ${{ steps['start-workflow'].output.instanceUrl.split('/') | last }}
+
   output:
     links:
       - title: Track Workflow in Orchestrator
