@@ -15,6 +15,8 @@ metadata:
   annotations:
     backstage.io/managed-by-location: url:https://github.com/sumiranchugh/idp/blob/main/developer-hub-config/catalog/vm-infrastructure.yaml
     servicenow.com/entity-id: rhel-vm-provisioning
+    # Links entity to the Orchestrator workflow tab (shows Workflows tab)
+    orchestrator.backstage.io/workflow-id: vm-provisioning-approval
   tags:
     - vm
     - rhel
