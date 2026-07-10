@@ -105,6 +105,8 @@ spec:
                   vm_password: redhat
                   ssh_public_key: '${ .ssh_public_key // "" }'
                   sn_request_number: ${ .sn_cr_number }
+                  sn_cr_sys_id: ${ .sncrsysid }
+                  sn_incident_sys_id: ${ .sn_incident_sys_id }
             actionDataFilter:
               results: .result
               toStateData: .aapJob

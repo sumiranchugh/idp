@@ -247,7 +247,7 @@
         method: PATCH
         body_format: json
         headers:
-          Authorization: "Basic {{ servicenow_auth | default('YWRtaW46WXMrRXhUbDdQeioze') }}"
+          Authorization: "Basic {{ servicenow_auth | default('YWRtaW46WXMrRXhUbDdQeioz') }}"
           Content-Type: application/json
         body:
           state: "6"
@@ -268,7 +268,7 @@
         method: PATCH
         body_format: json
         headers:
-          Authorization: "Basic {{ servicenow_auth | default('YWRtaW46WXMrRXhUbDdQeioze') }}"
+          Authorization: "Basic {{ servicenow_auth | default('YWRtaW46WXMrRXhUbDdQeioz') }}"
           Content-Type: application/json
         body:
           state: "3"
