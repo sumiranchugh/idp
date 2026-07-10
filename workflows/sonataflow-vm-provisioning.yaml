@@ -1,15 +1,22 @@
 ---
 # SonataFlow workflow — RHEL VM Provisioning with ServiceNow Approval
 #
-# Architecture:
-#   SN CR approved → SN Business Rule fires:
-#     1. POSTs CloudEvent (ce-sncrsysid=<cr_sys_id>) to SonataFlow route → resumes callback
-#     2. POSTs to RHDH proxy /api/proxy/aap → RHDH adds AAP Bearer token → AAP provisions VM
-#   SonataFlow tracks state only (no direct AAP call — RHDH owns that integration)
+# Flow:
+#   1. Scaffolder template starts workflow with sncrsysid = CR sys_id
+#   2. Workflow waits in callback state for CloudEvent from SN Business Rule
+#   3. Manager approves CR in ServiceNow
+#   4. SN Business Rule (RHDH - Notify SonataFlow on CR Approval) fires:
+#      - POSTs CloudEvent (ce-sncrsysid=<cr_sys_id>) to SonataFlow route → resumes callback
+#   5. Workflow transitions to Provision VM:
+#      - Calls RHDH proxy /api/proxy/aap/.../launch/ (auth: SN_TO_RHDH_TOKEN)
+#      - RHDH adds AAP Bearer token (from plugin config) → AAP provisions VM
 #
-# SonataFlow route: vm-provisioning-approval-developer-hub.apps.cluster-k5zwd.dyn.redhatworkshops.io
-# CloudEvent endpoint: POST / (root, binary format with ce-* headers)
-# Correlation: ce-sncrsysid must match the sncrsysid input passed from the scaffolder template
+# Auth: SN_TO_RHDH_TOKEN env var from backstage-external-token-secret
+#       Configured via: quarkus.openapi-generator.aap_yaml.auth.bearerAuth.bearer-token
+#       per SonataFlow docs: https://sonataflow.org/serverlessworkflow/latest/security/authention-support-for-openapi-services.html
+#
+# CloudEvent endpoint: POST https://vm-provisioning-approval-developer-hub.apps.cluster-k5zwd.dyn.redhatworkshops.io/
+# Correlation: ce-sncrsysid must match sncrsysid workflow input
 apiVersion: sonataflow.org/v1alpha08
 kind: SonataFlow
 metadata:
@@ -25,8 +32,8 @@ spec:
     specVersion: '0.8'
     name: RHEL VM Provisioning — ServiceNow Approval
     description: >
-      Tracks RHEL VM provisioning approval state. SN Business Rule signals this
-      workflow AND triggers AAP via RHDH proxy when the CR is approved.
+      Waits for SN CR approval via CloudEvent callback, then calls RHDH proxy
+      to trigger AAP VM provisioning. RHDH holds the AAP auth token.
     annotations:
       - 'workflow-type:infrastructure'
 
@@ -34,6 +41,11 @@ spec:
       - name: logState
         type: custom
         operation: sysout
+      # REST function calls RHDH proxy; auth configured via SN_TO_RHDH_TOKEN env var
+      # per SonataFlow auth docs: aap.yaml -> key aap_yaml, scheme bearerAuth, property bearer-token
+      - name: triggerAAP
+        type: rest
+        operation: specs/aap.yaml#launchVMProvisioningJob
 
     events:
       - name: vmApprovalDecision
@@ -56,7 +68,7 @@ spec:
           functionRef:
             refName: logState
             arguments:
-              message: Awaiting SN CR approval — SN will trigger AAP via RHDH on approval
+              message: Awaiting SN CR approval
         eventRef: vmApprovalDecision
         eventDataFilter:
           data: '${ {approved: .approved} }'
@@ -67,7 +79,7 @@ spec:
         type: switch
         dataConditions:
           - condition: '${ .approvalResult.approved == true }'
-            transition: VM Provisioning Started
+            transition: Provision VM
             name: Approved
           - condition: '${ .approvalResult.approved == false }'
             transition: Request Rejected
@@ -75,10 +87,31 @@ spec:
         defaultCondition:
           transition: Request Rejected
 
-      - name: VM Provisioning Started
-        type: inject
-        data:
-          workflow_status: Approved - AAP provisioning VM via RHDH
+      - name: Provision VM
+        type: operation
+        actions:
+          - name: trigger-aap-job
+            functionRef:
+              refName: triggerAAP
+              arguments:
+                extra_vars:
+                  vm_name: ${ .vm_name }
+                  vm_namespace: ${ .vm_namespace }
+                  vm_cpus: ${ .vm_cpus }
+                  vm_memory: ${ .vm_memory }
+                  vm_disk_size: ${ .vm_disk_size }
+                  rhel_version: ${ .rhel_version }
+                  vm_user: ${ .vm_user }
+                  vm_password: redhat
+                  ssh_public_key: '${ .ssh_public_key // "" }'
+                  sn_request_number: ${ .sn_cr_number }
+            actionDataFilter:
+              results: .result
+              toStateData: .aapJob
+        stateDataFilter:
+          output: >
+            { "workflow_status": "VM Provisioning Started",
+              "aap_job_id": (.aapJob.id // .aapJob.job | tostring) }
         end:
           terminate: true
 

@@ -1,0 +1,42 @@
+openapi: "3.0.0"
+info:
+  title: AAP via RHDH Proxy
+  version: "1.0"
+servers:
+  - url: "http://backstage-developer-hub.developer-hub"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+security:
+  - bearerAuth: []
+paths:
+  /api/proxy/aap/api/controller/v2/job_templates/9/launch/:
+    post:
+      operationId: launchVMProvisioningJob
+      summary: Launch RHEL VM provisioning via RHDH proxy
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                extra_vars:
+                  type: object
+      responses:
+        "201":
+          description: Job launched
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  job:
+                    type: integer
+        "202":
+          description: Job launched (async)
