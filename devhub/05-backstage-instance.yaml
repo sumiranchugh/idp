@@ -145,6 +145,7 @@ data:
         policyFileReload: true
         pluginsWithPermission:
           - orchestrator
+          - kubernetes
         admin:
           users:
             - name: user:default/sumiranchugh

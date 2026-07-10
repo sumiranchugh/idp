@@ -230,6 +230,8 @@ spec:
       action: orchestrator:workflow:run
       input:
         workflow_id: vm-provisioning-approval
+        # Link runs to the rhel-vm-provisioning component so they show in its Workflows tab
+        target_entity: component:default/rhel-vm-provisioning
         parameters:
           vm_name: ${{ parameters.vm_name }}
           vm_namespace: ${{ parameters.vm_namespace }}
