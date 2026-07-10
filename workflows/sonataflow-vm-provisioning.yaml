@@ -1,12 +1,15 @@
 ---
 # SonataFlow workflow — RHEL VM Provisioning with ServiceNow Approval
 #
-# Flow: SN CR approved → SN Business Rule POSTs CloudEvent to SonataFlow route
-#       → SonataFlow resumes callback state → calls AAP via OpenAPI REST function
+# Architecture:
+#   SN CR approved → SN Business Rule fires:
+#     1. POSTs CloudEvent (ce-sncrsysid=<cr_sys_id>) to SonataFlow route → resumes callback
+#     2. POSTs to RHDH proxy /api/proxy/aap → RHDH adds AAP Bearer token → AAP provisions VM
+#   SonataFlow tracks state only (no direct AAP call — RHDH owns that integration)
 #
-# CloudEvent correlation: ce-sncrsysid=<cr_sys_id> (must match sncrsysid workflow input)
-# AAP auth: Bearer token in vm-provisioning-approval-props application.properties
-# Route: vm-provisioning-approval-developer-hub.apps.cluster-k5zwd.dyn.redhatworkshops.io
+# SonataFlow route: vm-provisioning-approval-developer-hub.apps.cluster-k5zwd.dyn.redhatworkshops.io
+# CloudEvent endpoint: POST / (root, binary format with ce-* headers)
+# Correlation: ce-sncrsysid must match the sncrsysid input passed from the scaffolder template
 apiVersion: sonataflow.org/v1alpha08
 kind: SonataFlow
 metadata:
@@ -22,8 +25,8 @@ spec:
     specVersion: '0.8'
     name: RHEL VM Provisioning — ServiceNow Approval
     description: >
-      Waits for SN CR approval via CloudEvent callback, then triggers AAP
-      via OpenAPI REST function to provision the RHEL VM.
+      Tracks RHEL VM provisioning approval state. SN Business Rule signals this
+      workflow AND triggers AAP via RHDH proxy when the CR is approved.
     annotations:
       - 'workflow-type:infrastructure'
 
@@ -31,14 +34,8 @@ spec:
       - name: logState
         type: custom
         operation: sysout
-      # AAP REST function — uses OpenAPI spec (direct URLs break Kogito codegen)
-      # Auth: Bearer token in vm-provisioning-approval-props application.properties
-      - name: triggerAAP
-        type: rest
-        operation: specs/aap.yaml#launchVMProvisioningJob
 
     events:
-      # SN Business Rule POSTs CloudEvent with ce-sncrsysid=<cr_sys_id> on approval
       - name: vmApprovalDecision
         source: servicenow
         type: vm.approval.decision
@@ -52,7 +49,6 @@ spec:
           workflow_status: Pending Manager Approval
         transition: Awaiting Manager Approval
 
-      # Callback: paused until SN sends CloudEvent to the workflow route
       - name: Awaiting Manager Approval
         type: callback
         action:
@@ -60,7 +56,7 @@ spec:
           functionRef:
             refName: logState
             arguments:
-              message: Awaiting ServiceNow CR approval CloudEvent
+              message: Awaiting SN CR approval — SN will trigger AAP via RHDH on approval
         eventRef: vmApprovalDecision
         eventDataFilter:
           data: '${ {approved: .approved} }'
@@ -71,7 +67,7 @@ spec:
         type: switch
         dataConditions:
           - condition: '${ .approvalResult.approved == true }'
-            transition: Provision VM
+            transition: VM Provisioning Started
             name: Approved
           - condition: '${ .approvalResult.approved == false }'
             transition: Request Rejected
@@ -79,33 +75,10 @@ spec:
         defaultCondition:
           transition: Request Rejected
 
-      # ── Trigger AAP via OpenAPI REST function ────────────────────────────
-      - name: Provision VM
-        type: operation
-        actions:
-          - name: trigger-aap-job
-            functionRef:
-              refName: triggerAAP
-              arguments:
-                extra_vars:
-                  vm_name: ${ .vm_name }
-                  vm_namespace: ${ .vm_namespace }
-                  vm_cpus: ${ .vm_cpus }
-                  vm_memory: ${ .vm_memory }
-                  vm_disk_size: ${ .vm_disk_size }
-                  rhel_version: ${ .rhel_version }
-                  vm_user: ${ .vm_user }
-                  vm_password: redhat
-                  ssh_public_key: '${ .ssh_public_key // "" }'
-                  sn_request_number: ${ .sn_cr_number }
-            actionDataFilter:
-              results: .result
-              toStateData: .aapJob
-        stateDataFilter:
-          output: >
-            { "workflow_status": "VM Provisioning Started",
-              "vm_name": .vm_name,
-              "aap_job_id": (.aapJob.id | tostring) }
+      - name: VM Provisioning Started
+        type: inject
+        data:
+          workflow_status: Approved - AAP provisioning VM via RHDH
         end:
           terminate: true
 
@@ -113,11 +86,5 @@ spec:
         type: inject
         data:
           workflow_status: Rejected by Manager
-        stateDataFilter:
-          output: >
-            { "status": "rejected",
-              "vm_name": .vm_name,
-              "sn_cr_number": .sn_cr_number,
-              "message": .message }
         end:
           terminate: true
