@@ -243,6 +243,13 @@
           ssh_service: "{{ vm_name }}-ssh.{{ vm_namespace }}.svc.cluster.local"
 
     # ── Update ServiceNow records on successful provisioning ──────────────
+    # ── Notify RHDH catalog to refresh (so new VM shows in K8s tab) ──────────
+    # NOTE: Per-VM Backstage Component entities require writing catalog-info.yaml
+    # to a Git repository that RHDH monitors. Configure AAP with GitHub credentials
+    # and add a playbook step to commit catalog/vms/{{ vm_name }}.yaml to the idp repo.
+    # For now, VMs appear in the Kubernetes tab of the rhel-vm-provisioning component
+    # via the backstage.io/kubernetes-id=rhel-vm-provisioning label on the VM resource.
+
     - name: Resolve ServiceNow Incident
       uri:
         url: "https://dev423121.service-now.com/api/now/table/incident/{{ sn_incident_sys_id }}"

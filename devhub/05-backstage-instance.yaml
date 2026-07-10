@@ -214,6 +214,14 @@ data:
     kubernetes:
       serviceLocatorMethod:
         type: multiTenant
+      # Show OpenShift Virtualization VMs as custom resources in entity pages
+      customResources:
+        - group: kubevirt.io
+          apiVersion: v1
+          plural: virtualmachines
+        - group: kubevirt.io
+          apiVersion: v1
+          plural: virtualmachineinstances
       clusterLocatorMethods:
         - type: config
           clusters:
