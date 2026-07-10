@@ -1,6 +1,7 @@
 ---
 # SonataFlow workflow — RHEL VM Provisioning with ServiceNow Approval
-# Uses inject + callback + switch states to avoid internal EmbeddedStart/Script nodes in UI
+# Polls the ServiceNow CR for approval every 30s, then triggers AAP.
+# Auth: URL-embedded basic auth for SN; bearer token for AAP via application.properties.
 apiVersion: sonataflow.org/v1alpha08
 kind: SonataFlow
 metadata:
@@ -16,69 +17,100 @@ spec:
     specVersion: '0.8'
     name: RHEL VM Provisioning — ServiceNow Approval
     description: >
-      Self-service RHEL VM provisioning with manager approval via ServiceNow Change Request.
-      Submitted through Red Hat Developer Hub Orchestrator.
+      Polls the ServiceNow change request for manager approval, then provisions
+      the RHEL VM via Ansible Automation Platform.
     annotations:
       - 'workflow-type:infrastructure'
 
     functions:
-      # sysout is built-in to SonataFlow — logs to stdout without creating embedded sub-flows
-      - name: logState
-        type: custom
-        operation: sysout
+      # GET change_request by sys_id — basic auth embedded in URL
+      - name: getSNCRStatus
+        type: rest
+        operation: >
+          GET https://admin:Ys%2BExTl7Pz%2A3@dev423121.service-now.com/api/now/table/change_request/{sys_id}
 
-    events:
-      - name: vmApprovalDecision
-        source: servicenow
-        type: vm.approval.decision
-        correlation:
-          - contextAttributeName: snincidentsysid
+      # POST to AAP job template — bearer token configured in application.properties
+      - name: triggerAAP
+        type: rest
+        operation: >
+          POST https://aap-platform-ansible-automation-platform.apps.cluster-k5zwd.dyn.redhatworkshops.io/api/controller/v2/job_templates/9/launch/
 
     states:
-      # inject state: no function, no embedded nodes — cleanest UI display
-      - name: Request Received
-        type: inject
-        data:
-          workflow_status: Pending Manager Approval
-        transition: Awaiting Manager Approval
+      # ── Poll CR every 30s until approved or rejected ────────────────────
+      - name: PollCRStatus
+        type: operation
+        actions:
+          - name: get-cr-status
+            functionRef:
+              refName: getSNCRStatus
+              arguments:
+                sys_id: ${ .sn_cr_sys_id }
+            actionDataFilter:
+              results: .result
+              toStateData: .crRecord
+            sleep:
+              before: PT30S
+        stateDataFilter:
+          output: >
+            . + { "crApproval": .crRecord.approval }
+        transition: CheckApproval
 
-      # callback state: paused waiting for CloudEvent from SN Business Rule
-      - name: Awaiting Manager Approval
-        type: callback
-        action:
-          name: log-waiting
-          functionRef:
-            refName: logState
-            arguments:
-              message: Workflow paused — awaiting ServiceNow Change Request approval
-        eventRef: vmApprovalDecision
-        eventDataFilter:
-          data: '${ {approved: .approved, approvedBy: (.approvedBy // "approver")} }'
-          toStateData: .approvalResult
-        transition: Evaluate Approval Decision
-
-      - name: Evaluate Approval Decision
+      # ── Branch on CR approval field ──────────────────────────────────────
+      - name: CheckApproval
         type: switch
         dataConditions:
-          - condition: '${ .approvalResult.approved == true }'
-            transition: Provisioning VM
+          - condition: '${ .crApproval == "approved" }'
+            transition: ProvisionVM
             name: Approved
-          - condition: '${ .approvalResult.approved == false }'
-            transition: Request Rejected
+          - condition: '${ .crApproval == "rejected" }'
+            transition: ApprovalRejected
             name: Rejected
         defaultCondition:
-          transition: Request Rejected
+          transition: PollCRStatus
 
-      - name: Provisioning VM
-        type: inject
-        data:
-          workflow_status: Approved — VM Provisioning Started via AAP
+      # ── Trigger AAP job ──────────────────────────────────────────────────
+      - name: ProvisionVM
+        type: operation
+        actions:
+          - name: trigger-aap-job
+            functionRef:
+              refName: triggerAAP
+              arguments:
+                extra_vars:
+                  vm_name: ${ .vm_name }
+                  vm_namespace: ${ .vm_namespace }
+                  vm_cpus: ${ .vm_cpus }
+                  vm_memory: ${ .vm_memory }
+                  vm_disk_size: ${ .vm_disk_size }
+                  rhel_version: ${ .rhel_version }
+                  vm_user: ${ .vm_user }
+                  vm_password: redhat
+                  ssh_public_key: '${ .ssh_public_key // "" }'
+                  sn_request_number: ${ .sn_cr_number }
+            actionDataFilter:
+              results: .result
+              toStateData: .aapJob
+        stateDataFilter:
+          output: >
+            { "status": "provisioning",
+              "vm_name": .vm_name,
+              "sn_cr_number": .sn_cr_number,
+              "aap_job_id": (.aapJob.id | tostring),
+              "ssh_service": (.vm_name + "-ssh." + .vm_namespace + ".svc.cluster.local") }
         end:
           terminate: true
 
-      - name: Request Rejected
+      # ── Approval rejected ────────────────────────────────────────────────
+      - name: ApprovalRejected
         type: inject
         data:
-          workflow_status: Rejected by Manager
+          status: rejected
+          message: VM provisioning request was rejected by the approver in ServiceNow
+        stateDataFilter:
+          output: >
+            { "status": "rejected",
+              "vm_name": .vm_name,
+              "sn_cr_number": .sn_cr_number,
+              "message": .message }
         end:
           terminate: true
