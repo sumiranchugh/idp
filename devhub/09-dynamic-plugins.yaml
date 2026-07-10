@@ -41,6 +41,10 @@ data:
                 mountPoints:
                   - mountPoint: entity.page.topology/cards
                     importName: TopologyPage
+                    config:
+                      layout:
+                        gridColumn: 1 / -1
+                        gridRow: 1 / -1
 
       # ── ArgoCD (OCI from ghcr.io, no hash needed) ────────────────────────
       # Frontend (npm with integrity — not available as OCI/dist)
@@ -84,6 +88,9 @@ data:
                 mountPoints:
                   - mountPoint: entity.page.kubernetes/cards
                     importName: EntityKubernetesContent
+                    config:
+                      layout:
+                        gridColumn: 1 / -1
 
       # ── HTTP Scaffolder Action (dist, no hash needed) ─────────────────────
       # Action: roadiehq:utils:http:request

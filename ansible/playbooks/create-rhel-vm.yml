@@ -174,6 +174,7 @@
             namespace: "{{ vm_namespace }}"
             labels:
               app: "{{ vm_name }}"
+              backstage.io/kubernetes-id: rhel-vm-provisioning
           spec:
             type: ClusterIP
             selector:

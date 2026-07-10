@@ -32,12 +32,12 @@ data:
     p, role:default/admin, orchestrator.workflowAdminView, read, allow
     p, role:default/admin, orchestrator.instanceAdminView, read, allow
 
-    # ── Kubernetes permissions ────────────────────────────────────────────
-    # Exact permission names from @backstage/plugin-kubernetes-backend
-    # Error message: 'kubernetes.clusters.read' and 'kubernetes.resources.read'
+    # ── Kubernetes + Topology permissions ────────────────────────────────────────────
     p, role:default/admin, kubernetes.clusters, read, allow
     p, role:default/admin, kubernetes.resources, read, allow
     p, role:default/user, kubernetes.clusters, read, allow
+    p, role:default/admin, topology.view, read, allow
+    p, role:default/user, topology.view, read, allow
     p, role:default/user, kubernetes.resources, read, allow
 
     # ── RBAC management (admin UI) ────────────────────────────────────────

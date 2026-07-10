@@ -146,6 +146,7 @@ data:
         pluginsWithPermission:
           - orchestrator
           - kubernetes
+          - topology
         admin:
           users:
             - name: user:default/sumiranchugh
