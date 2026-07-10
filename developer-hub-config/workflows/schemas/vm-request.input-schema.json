@@ -52,6 +52,24 @@
     "justification": {
       "type": "string",
       "title": "Business Justification"
+    },
+    "sn_cr_sys_id": {
+      "type": "string",
+      "title": "ServiceNow CR sys_id",
+      "description": "sys_id of the ServiceNow change request to poll for approval"
+    },
+    "sn_cr_number": {
+      "type": "string",
+      "title": "ServiceNow CR number",
+      "description": "Human-readable CR number (e.g. CHG0001234)"
+    },
+    "sn_incident_sys_id": {
+      "type": "string",
+      "title": "ServiceNow Incident sys_id"
+    },
+    "sn_incident_number": {
+      "type": "string",
+      "title": "ServiceNow Incident number"
     }
   }
 }

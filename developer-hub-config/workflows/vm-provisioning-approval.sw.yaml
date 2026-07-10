@@ -3,8 +3,8 @@ version: '1.0'
 specVersion: '0.8'
 name: RHEL VM Provisioning with ServiceNow Approval
 description: >
-  Orchestrates RHEL VM provisioning: creates a ServiceNow approval request,
-  waits for manager approval via callback, then provisions the VM via AAP.
+  Polls the ServiceNow change request for manager approval, then provisions
+  the RHEL VM via Ansible Automation Platform.
 annotations:
   - 'workflow-type:infrastructure'
 dataInputSchema: schemas/vm-request.input-schema.json
@@ -13,97 +13,50 @@ extensions:
     outputSchema: schemas/vm-provisioning-output.schema.json
 
 functions:
-  - name: createSNIncident
+  - name: getSNCRStatus
     type: rest
     operation: >
-      POST ${SERVICENOW_BASE_URL}/api/now/table/incident
-
-  - name: updateSNIncident
-    type: rest
-    operation: >
-      PATCH ${SERVICENOW_BASE_URL}/api/now/table/incident
+      GET ${SERVICENOW_BASE_URL}/api/now/table/change_request/{sys_id}
 
   - name: triggerAAP
     type: rest
     operation: >
       POST ${AAP_URL}/api/controller/v2/job_templates/9/launch/
 
-events:
-  - name: approvalDecision
-    source: servicenow
-    type: vm.approval.decision
-    correlation:
-      - contextAttributeName: snincidentsysid
-
 states:
-  # ── Step 1: Create ServiceNow incident ──────────────────────────────────
-  - name: CreateSNRequest
+  # ── Poll ServiceNow CR every 30s until approved or rejected ──────────────
+  # Template passes sn_cr_sys_id; loops back here from CheckApproval when pending.
+  - name: PollCRStatus
     type: operation
     actions:
-      - name: create-incident
+      - name: get-cr-status
         functionRef:
-          refName: createSNIncident
+          refName: getSNCRStatus
           arguments:
-            short_description: '${ "VM Request: " + .vm_name + " (RHEL " + .rhel_version + ")" }'
-            description: >
-              ${ "VM Provisioning Request from Red Hat Developer Hub\n\n" +
-                 "VM: " + .vm_name + "\n" +
-                 "Namespace: " + .vm_namespace + "\n" +
-                 "RHEL: " + .rhel_version + "\n" +
-                 "CPUs: " + (.vm_cpus|tostring) + "\n" +
-                 "Memory: " + .vm_memory + "\n" +
-                 "Disk: " + .vm_disk_size + "\n" +
-                 "User: " + .vm_user + "\n\n" +
-                 "Workflow Instance: " + $WORKFLOW.instanceId }
-            category: infrastructure
-            approval: requested
-            state: "1"
-            u_vm_name: ${ .vm_name }
-            u_vm_namespace: ${ .vm_namespace }
-            u_vm_rhel_version: ${ .rhel_version }
-            u_vm_cpus: ${ .vm_cpus | tostring }
-            u_vm_memory: ${ .vm_memory }
-            u_vm_disk_size: ${ .vm_disk_size }
-            u_vm_user: ${ .vm_user }
-            u_aap_triggered: "false"
-            u_workflow_instance: ${ $WORKFLOW.instanceId }
+            sys_id: ${ .sn_cr_sys_id }
         actionDataFilter:
           results: .result
-          toStateData: .snRequest
+          toStateData: .crRecord
+        sleep:
+          before: PT30S
     stateDataFilter:
-      output: >
-        .  + { "snSysId": .snRequest.sys_id, "snNumber": .snRequest.number }
-    transition: WaitForApproval
-
-  # ── Step 2: Wait for ServiceNow approval ─────────────────────────────────
-  # SN Business Rule POSTs a CloudEvent to SonataFlow when incident is approved.
-  # The event must contain header: ce-snincidentsysid = <incident sys_id>
-  - name: WaitForApproval
-    type: callback
-    action:
-      functionRef:
-        refName: createSNIncident   # no-op placeholder (callback states need an action)
-        arguments: {}
-    eventRef: approvalDecision
-    eventDataFilter:
-      data: ${ .approvalData }
-      toStateData: .approvalResult
+      output: ${ . + { "crApproval": .crRecord.approval } }
     transition: CheckApproval
 
-  # ── Step 3: Branch on approval decision ─────────────────────────────────
+  # ── Branch on CR approval field ───────────────────────────────────────────
   - name: CheckApproval
     type: switch
     dataConditions:
-      - condition: ${ .approvalResult.approved == true }
+      - condition: ${ .crApproval == "approved" }
         transition: ProvisionVM
         name: Approved
-      - condition: ${ .approvalResult.approved == false }
+      - condition: ${ .crApproval == "rejected" }
         transition: ApprovalRejected
         name: Rejected
     defaultCondition:
-      transition: ApprovalRejected
+      transition: PollCRStatus
 
-  # ── Step 4a: Provision VM via AAP ────────────────────────────────────────
+  # ── Provision VM via AAP ──────────────────────────────────────────────────
   - name: ProvisionVM
     type: operation
     actions:
@@ -121,7 +74,7 @@ states:
               vm_user: ${ .vm_user }
               vm_password: redhat
               ssh_public_key: ${ .ssh_public_key // "" }
-              sn_request_number: ${ .snNumber }
+              sn_request_number: ${ .sn_cr_number }
         actionDataFilter:
           results: .result
           toStateData: .aapJob
@@ -130,13 +83,13 @@ states:
         { "status": "provisioning",
           "vm_name": .vm_name,
           "vm_namespace": .vm_namespace,
-          "sn_request": .snNumber,
+          "sn_cr_number": .sn_cr_number,
           "aap_job_id": (.aapJob.id | tostring),
           "ssh_service": (.vm_name + "-ssh." + .vm_namespace + ".svc.cluster.local") }
     end:
       terminate: true
 
-  # ── Step 4b: Approval rejected ───────────────────────────────────────────
+  # ── Approval rejected ─────────────────────────────────────────────────────
   - name: ApprovalRejected
     type: inject
     data:
@@ -146,7 +99,7 @@ states:
       output: >
         { "status": "rejected",
           "vm_name": .vm_name,
-          "sn_request": .snNumber,
+          "sn_cr_number": .sn_cr_number,
           "message": .message }
     end:
       terminate: true
