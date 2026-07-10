@@ -53,10 +53,10 @@
       "type": "string",
       "title": "Business Justification"
     },
-    "sn_cr_sys_id": {
+    "sncrsysid": {
       "type": "string",
       "title": "ServiceNow CR sys_id",
-      "description": "sys_id of the ServiceNow change request to poll for approval"
+      "description": "CR sys_id — used as the CloudEvent correlation attribute (ce-sncrsysid) to resume the callback state"
     },
     "sn_cr_number": {
       "type": "string",

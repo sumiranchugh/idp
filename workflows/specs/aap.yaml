@@ -1,0 +1,33 @@
+openapi: "3.0.0"
+info:
+  title: Ansible Automation Platform Job Templates API
+  version: "1.0"
+servers:
+  - url: "https://aap-platform-ansible-automation-platform.apps.cluster-k5zwd.dyn.redhatworkshops.io"
+paths:
+  /api/controller/v2/job_templates/9/launch/:
+    post:
+      operationId: launchVMProvisioningJob
+      summary: Launch the RHEL VM provisioning job template
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                extra_vars:
+                  type: object
+      responses:
+        "201":
+          description: Job launched
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  url:
+                    type: string
+        "202":
+          description: Job launched (async)

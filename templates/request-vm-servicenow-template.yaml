@@ -241,7 +241,7 @@ spec:
           ssh_public_key: "${{ parameters.ssh_public_key | default('') }}"
           sn_incident_sys_id: ${{ steps['create-sn-incident'].output.result.sys_id }}
           sn_incident_number: ${{ steps['create-sn-incident'].output.result.number }}
-          sn_cr_sys_id: ${{ steps['create-sn-cr'].output.result.sys_id }}
+          sncrsysid: ${{ steps['create-sn-cr'].output.result.sys_id }}
           sn_cr_number: ${{ steps['create-sn-cr'].output.result.number }}
 
   output:
