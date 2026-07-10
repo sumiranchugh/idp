@@ -122,13 +122,12 @@ spec:
   steps:
     - id: trigger-aap
       name: Trigger VM Provisioning via Ansible Automation Platform
-      action: roadiehq:utils:http:request
+      action: http:backstage:request
       input:
         method: POST
-        url: https://aap-platform-ansible-automation-platform.apps.cluster-k5zwd.dyn.redhatworkshops.io/api/controller/v2/job_templates/9/launch/
+        path: /api/proxy/aap/api/controller/v2/job_templates/9/launch/
         headers:
           content-type: application/json
-          # Token injected server-side from RHDH secret (AAP_TOKEN env var via proxy config)
         body:
           extra_vars:
             vm_name: ${{ parameters.vm_name }}
@@ -155,6 +154,7 @@ spec:
     links:
       - title: View AAP Job
         url: https://aap-platform-ansible-automation-platform.apps.cluster-k5zwd.dyn.redhatworkshops.io/#/jobs/playbook/${{ steps['trigger-aap'].output.body.id }}/details
+        icon: dashboard
         icon: dashboard
       - title: View VM in OpenShift
         url: https://console-openshift-console.apps.cluster-k5zwd.dyn.redhatworkshops.io/k8s/ns/${{ parameters.vm_namespace }}/kubevirt.io~v1~VirtualMachine/${{ parameters.vm_name }}
