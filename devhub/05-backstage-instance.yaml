@@ -259,7 +259,7 @@ data:
                     md: "span 6"
                     xs: "span 4"
             - mountPoint: entity.page.workflows/cards
-              importName: EntityWorkflowRunsTabContent
+              importName: OrchestratorCatalogTab
               config:
                 if:
                   allOf:
@@ -308,6 +308,16 @@ rules:
       - cronjobs
       - jobs
       - limitranges
+    verbs:
+      - get
+      - list
+      - watch
+  # OpenShift Virtualization — show VMs and their instances on the entity page
+  - apiGroups:
+      - kubevirt.io
+    resources:
+      - virtualmachines
+      - virtualmachineinstances
     verbs:
       - get
       - list

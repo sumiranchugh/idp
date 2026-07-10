@@ -53,6 +53,8 @@
               app: "{{ vm_name }}"
               os: "rhel{{ rhel_version }}"
               kubevirt.io/vm: "{{ vm_name }}"
+              # Backstage Kubernetes plugin label — links this VM to the rhel-vm-provisioning component
+              backstage.io/kubernetes-id: rhel-vm-provisioning
           spec:
             dataVolumeTemplates:
               - apiVersion: cdi.kubevirt.io/v1beta1

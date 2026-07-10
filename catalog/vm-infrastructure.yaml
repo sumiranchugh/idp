@@ -13,13 +13,15 @@ metadata:
     Self-service RHEL virtual machine provisioning via Red Hat Developer Hub,
     ServiceNow approval workflows, and Ansible Automation Platform.
   annotations:
-    backstage.io/managed-by-location: url:https://github.com/sumiranchugh/idp/blob/main/developer-hub-config/catalog/vm-infrastructure.yaml
+    backstage.io/managed-by-location: url:https://github.com/sumiranchugh/idp/blob/main/catalog/vm-infrastructure.yaml
     # ServiceNow tab — only shows incidents where u_backstage_entity_id=rhel-vm-provisioning
     servicenow.com/entity-id: rhel-vm-provisioning
-    # Default filter: show New(1) + In Progress(2) incidents by default
-    servicenow.com/default-state-filter: "IN1,2"
     # Links entity to the Orchestrator workflow tab (shows Workflows tab)
     orchestrator.backstage.io/workflow-id: vm-provisioning-approval
+    # Kubernetes tab — shows VMs in the 'vms' namespace with label backstage.io/kubernetes-id=rhel-vm-provisioning
+    # VMs must have this label applied when provisioned (AAP playbook sets it)
+    backstage.io/kubernetes-id: rhel-vm-provisioning
+    backstage.io/kubernetes-namespace: vms
   tags:
     - vm
     - rhel
