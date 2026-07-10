@@ -239,3 +239,44 @@
           vm_ready: "{{ vm_status.resources[0].status.ready | default(false) }}"
           vm_status: "{{ vm_status.resources[0].status.printableStatus | default('Unknown') }}"
           ssh_service: "{{ vm_name }}-ssh.{{ vm_namespace }}.svc.cluster.local"
+
+    # ── Update ServiceNow records on successful provisioning ──────────────
+    - name: Resolve ServiceNow Incident
+      uri:
+        url: "https://dev423121.service-now.com/api/now/table/incident/{{ sn_incident_sys_id }}"
+        method: PATCH
+        body_format: json
+        headers:
+          Authorization: "Basic {{ servicenow_auth | default('YWRtaW46WXMrRXhUbDdQeioze') }}"
+          Content-Type: application/json
+        body:
+          state: "6"
+          close_code: "Solution provided"
+          close_notes: >
+            VM {{ vm_name }} successfully provisioned.
+            Status: {{ vm_status.resources[0].status.printableStatus | default('Running') }}
+            SSH: ssh {{ vm_user | default('cloud-user') }}@{{ vm_name }}-ssh.{{ vm_namespace }}.svc.cluster.local
+            Provisioned by: Ansible Automation Platform / Red Hat Developer Hub
+        status_code: [200, 201, 204]
+        validate_certs: false
+      when: sn_incident_sys_id is defined and sn_incident_sys_id | length > 0
+      ignore_errors: true
+
+    - name: Close ServiceNow Change Request
+      uri:
+        url: "https://dev423121.service-now.com/api/now/table/change_request/{{ sn_cr_sys_id }}"
+        method: PATCH
+        body_format: json
+        headers:
+          Authorization: "Basic {{ servicenow_auth | default('YWRtaW46WXMrRXhUbDdQeioze') }}"
+          Content-Type: application/json
+        body:
+          state: "3"
+          close_code: "successful"
+          close_notes: >
+            VM {{ vm_name }} provisioned successfully.
+            Automated by Ansible Automation Platform.
+        status_code: [200, 201, 204]
+        validate_certs: false
+      when: sn_cr_sys_id is defined and sn_cr_sys_id | length > 0
+      ignore_errors: true

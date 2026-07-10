@@ -142,11 +142,12 @@ spec:
         > VM provisioning takes approximately 5–10 minutes after approval.
 
   steps:
+    # Step 1: Create Incident — visible in RHDH ServiceNow tab, tracks state
     - id: create-sn-incident
-      name: Create ServiceNow Change Request
+      name: Create ServiceNow Incident (for RHDH tracking)
       action: servicenow:now:table:createRecord
       input:
-        tableName: change_request
+        tableName: incident
         requestBody:
           short_description: "VM Request: ${{ parameters.vm_name }} (RHEL ${{ parameters.rhel_version }})"
           description: |
@@ -161,11 +162,47 @@ spec:
             User: ${{ parameters.vm_user }}
 
             Justification: ${{ parameters.justification }}
+          category: infrastructure
+          impact: "3"
+          urgency: "3"
+          state: "1"
+          u_backstage_entity_id: rhel-vm-provisioning
+          u_vm_name: ${{ parameters.vm_name }}
+          u_vm_namespace: ${{ parameters.vm_namespace }}
+          u_vm_rhel_version: "${{ parameters.rhel_version }}"
+          u_vm_cpus: "${{ parameters.vm_cpus }}"
+          u_vm_memory: ${{ parameters.vm_memory }}
+          u_vm_disk_size: ${{ parameters.vm_disk_size }}
+          u_vm_user: ${{ parameters.vm_user }}
+
+    # Step 2: Create Change Request — has Approve/Reject UI for manager
+    - id: create-sn-cr
+      name: Create ServiceNow Change Request (for manager approval)
+      action: servicenow:now:table:createRecord
+      input:
+        tableName: change_request
+        requestBody:
+          short_description: "VM Request: ${{ parameters.vm_name }} (RHEL ${{ parameters.rhel_version }})"
+          description: |
+            VM Provisioning Request — approve to trigger automated provisioning.
+
+            VM: ${{ parameters.vm_name }}
+            Namespace: ${{ parameters.vm_namespace }}
+            RHEL: ${{ parameters.rhel_version }}
+            CPUs: ${{ parameters.vm_cpus }}
+            Memory: ${{ parameters.vm_memory }}
+            Disk: ${{ parameters.vm_disk_size }}
+            User: ${{ parameters.vm_user }}
+
+            Linked Incident: ${{ steps['create-sn-incident'].output.result.number }}
+            Justification: ${{ parameters.justification }}
           type: normal
           category: Other
           priority: "4"
           risk: "3"
           impact: "3"
+          u_incident_sys_id: ${{ steps['create-sn-incident'].output.result.sys_id }}
+          u_backstage_entity_id: rhel-vm-provisioning
           u_vm_name: ${{ parameters.vm_name }}
           u_vm_namespace: ${{ parameters.vm_namespace }}
           u_vm_rhel_version: "${{ parameters.rhel_version }}"
@@ -174,19 +211,20 @@ spec:
           u_vm_disk_size: ${{ parameters.vm_disk_size }}
           u_vm_user: ${{ parameters.vm_user }}
           u_aap_triggered: "false"
-          u_backstage_entity_id: rhel-vm-provisioning
 
+    # Step 3: Assign manager as approver on the Change Request
     - id: add-approver
-      name: Assign Manager Approver in ServiceNow
+      name: Assign Manager Approver
       action: servicenow:now:table:createRecord
       input:
         tableName: sysapproval_approver
         requestBody:
-          sysapproval: ${{ steps['create-sn-incident'].output.result.sys_id }}
+          sysapproval: ${{ steps['create-sn-cr'].output.result.sys_id }}
           approver: 6816f79cc0a8016401c5a33be04be441
           source_table: change_request
           state: requested
 
+    # Step 4: Start Orchestrator workflow — tracks approval state
     - id: start-workflow
       name: Start Orchestrator Approval Workflow
       action: orchestrator:workflow:run
@@ -201,23 +239,31 @@ spec:
           vm_disk_size: ${{ parameters.vm_disk_size }}
           vm_user: ${{ parameters.vm_user }}
           ssh_public_key: "${{ parameters.ssh_public_key | default('') }}"
-          sn_sys_id: ${{ steps['create-sn-incident'].output.result.sys_id }}
-          sn_number: ${{ steps['create-sn-incident'].output.result.number }}
+          sn_incident_sys_id: ${{ steps['create-sn-incident'].output.result.sys_id }}
+          sn_incident_number: ${{ steps['create-sn-incident'].output.result.number }}
+          sn_cr_sys_id: ${{ steps['create-sn-cr'].output.result.sys_id }}
+          sn_cr_number: ${{ steps['create-sn-cr'].output.result.number }}
 
   output:
     links:
       - title: Track Workflow in Orchestrator
         url: ${{ steps['start-workflow'].output.instanceUrl }}
         icon: dashboard
-      - title: Approve in ServiceNow
-        url: https://dev423121.service-now.com/change_request.do?sys_id=${{ steps['create-sn-incident'].output.result.sys_id }}
+      - title: Approve in ServiceNow (Change Request)
+        url: https://dev423121.service-now.com/change_request.do?sys_id=${{ steps['create-sn-cr'].output.result.sys_id }}
         icon: dashboard
+      - title: View Incident in RHDH Catalog
+        url: https://backstage-developer-hub-developer-hub.apps.cluster-k5zwd.dyn.redhatworkshops.io/catalog/default/component/rhel-vm-provisioning
+        icon: catalog
     text:
       - title: Request Submitted for Approval
         content: |
           ## VM Request Submitted
 
-          **ServiceNow Change Request:** ${{ steps['create-sn-incident'].output.result.number }}
+          | Record | Number |
+          |--------|--------|
+          | Incident (RHDH tracking) | ${{ steps['create-sn-incident'].output.result.number }} |
+          | Change Request (approval) | ${{ steps['create-sn-cr'].output.result.number }} |
           **Status:** Awaiting manager approval
 
           | Parameter | Value |
