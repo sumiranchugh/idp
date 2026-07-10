@@ -33,9 +33,12 @@ data:
     p, role:default/admin, orchestrator.instanceAdminView, read, allow
 
     # ── Kubernetes permissions ────────────────────────────────────────────
-    # All authenticated users can view the Kubernetes/VM tab on entity pages
-    p, role:default/admin, kubernetes-cluster, read, allow
-    p, role:default/user, kubernetes-cluster, read, allow
+    # Exact permission names from @backstage/plugin-kubernetes-backend
+    # Error message: 'kubernetes.clusters.read' and 'kubernetes.resources.read'
+    p, role:default/admin, kubernetes.clusters, read, allow
+    p, role:default/admin, kubernetes.resources, read, allow
+    p, role:default/user, kubernetes.clusters, read, allow
+    p, role:default/user, kubernetes.resources, read, allow
 
     # ── RBAC management (admin UI) ────────────────────────────────────────
     p, role:default/admin, policy.entity.read, read, allow
