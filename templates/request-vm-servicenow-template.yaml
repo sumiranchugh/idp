@@ -201,13 +201,10 @@ spec:
           priority: "4"
           risk: "3"
           impact: "3"
-          # State -4 = Assessment — this is required for the Approve/Reject buttons
-          # to appear in SN UI. Draft (-5) does not show approval options.
-          state: "-4"
           # Route to Application Development group — any member can approve
           assignment_group: 0a52d3dcd7011200f2d224837e6103f2
-          # Set approval to requested so it appears in the group approval queue
-          approval: requested
+          # SN Change Management workflow resets state to New on creation;
+          # we move it to Assess via a separate modifyRecord step below.
           u_incident_sys_id: ${{ steps['create-sn-incident'].output.result.sys_id }}
           u_backstage_entity_id: rhel-vm-provisioning
           u_vm_name: ${{ parameters.vm_name }}
@@ -219,9 +216,18 @@ spec:
           u_vm_user: ${{ parameters.vm_user }}
           u_aap_triggered: "false"
 
-    # Step 3: No individual approver record needed — the CR itself has approval:requested
-    # and assignment_group: Application Development. Any group member can open the CR
-    # in ServiceNow and click Approve. The Business Rule fires on approval=approved.
+    # Step 3: Move CR to Assessment state so Approve/Reject buttons are visible
+    # SN Change Management resets state to New on creation; we PATCH it to Assess (-4)
+    # which makes the approval UI visible to Application Development group members.
+    - id: move-cr-to-assess
+      name: Move Change Request to Assessment
+      action: servicenow:now:table:modifyRecord
+      input:
+        tableName: change_request
+        sysId: ${{ steps['create-sn-cr'].output.result.sys_id }}
+        requestBody:
+          state: "-4"
+          approval: requested
 
     # Step 4: Start Orchestrator workflow — tracks approval state
     - id: start-workflow
