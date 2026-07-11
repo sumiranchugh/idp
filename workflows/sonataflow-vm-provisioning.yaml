@@ -3,20 +3,24 @@
 #
 # Flow:
 #   1. Scaffolder template starts workflow with sncrsysid = CR sys_id
-#   2. Workflow waits in callback state for CloudEvent from SN Business Rule
+#   2. Workflow enters callback state:
+#      - Action PATCHes SN CR with callback URL + instance ID (via RHDH proxy)
+#      - Waits for CloudEvent on /callback (quarkus-http connector)
 #   3. Manager approves CR in ServiceNow
-#   4. SN Business Rule (RHDH - Notify SonataFlow on CR Approval) fires:
-#      - POSTs CloudEvent (ce-sncrsysid=<cr_sys_id>) to SonataFlow route → resumes callback
-#   5. Workflow transitions to Provision VM:
-#      - Calls RHDH proxy /api/proxy/aap/.../launch/ (auth: SN_TO_RHDH_TOKEN)
-#      - RHDH adds AAP Bearer token (from plugin config) → AAP provisions VM
+#   4. SN Business Rule fires:
+#      - POSTs CloudEvent to callback URL with ce-kogitoprocrefid = instance ID
+#   5. Workflow resumes → Provision VM via AAP (through RHDH proxy)
+#
+# HTTP callback pattern per SonataFlow docs:
+#   https://sonataflow.org/serverlessworkflow/main/use-cases/advanced-developer-use-cases/callbacks/openapi-callback-events-example.html
 #
 # Auth: SN_TO_RHDH_TOKEN env var from backstage-external-token-secret
-#       Configured via: quarkus.openapi-generator.aap_yaml.auth.bearerAuth.bearer-token
-#       per SonataFlow docs: https://sonataflow.org/serverlessworkflow/latest/security/authention-support-for-openapi-services.html
+#   AAP: quarkus.openapi-generator.aap_yaml.auth.bearerAuth.bearer-token
+#   SN:  quarkus.openapi-generator.sn_yaml.auth.bearerAuth.bearer-token
 #
-# CloudEvent endpoint: POST https://vm-provisioning-approval-developer-hub.apps.cluster-k5zwd.dyn.redhatworkshops.io/
-# Correlation: ce-sncrsysid must match sncrsysid workflow input
+# Incoming CloudEvent endpoint: POST /callback (quarkus-http connector)
+#   Configured via: mp.messaging.incoming.vmApprovalDecision.connector=quarkus-http
+#   Uses kogitoprocrefid for process context propagation to Data Index
 apiVersion: sonataflow.org/v1alpha08
 kind: SonataFlow
 metadata:
@@ -26,8 +30,6 @@ metadata:
     sonataflow.org/description: RHEL VM provisioning with ServiceNow approval via Orchestrator
     sonataflow.org/profile: preview
 spec:
-  # PostgreSQL persistence — workflow instances survive pod restarts
-  # Uses the same RHDH PostgreSQL, separate database sonataflow_workflow
   persistence:
     postgresql:
       secretRef:
@@ -45,8 +47,8 @@ spec:
     specVersion: '0.8'
     name: RHEL VM Provisioning — ServiceNow Approval
     description: >
-      Waits for SN CR approval via CloudEvent callback, then calls RHDH proxy
-      to trigger AAP VM provisioning. RHDH holds the AAP auth token.
+      Uses HTTP callback pattern: stores callback URL in SN CR, waits for
+      CloudEvent via quarkus-http connector on /callback, then triggers AAP.
     annotations:
       - 'workflow-type:infrastructure'
 
@@ -54,8 +56,9 @@ spec:
       - name: logState
         type: custom
         operation: sysout
-      # REST function calls RHDH proxy; auth configured via SN_TO_RHDH_TOKEN env var
-      # per SonataFlow auth docs: aap.yaml -> key aap_yaml, scheme bearerAuth, property bearer-token
+      - name: storeCallbackInfo
+        type: rest
+        operation: specs/sn.yaml#updateCRCallbackInfo
       - name: triggerAAP
         type: rest
         operation: specs/aap.yaml#launchVMProvisioningJob
@@ -63,7 +66,7 @@ spec:
     events:
       - name: vmApprovalDecision
         source: servicenow
-        type: vm.approval.decision
+        type: vmApprovalDecision
         correlation:
           - contextAttributeName: sncrsysid
 
@@ -77,11 +80,13 @@ spec:
       - name: Awaiting Manager Approval
         type: callback
         action:
-          name: log-waiting
+          name: store-callback-info
           functionRef:
-            refName: logState
+            refName: storeCallbackInfo
             arguments:
-              message: Awaiting SN CR approval
+              sys_id: ${ .sncrsysid }
+              u_workflow_instance_id: $WORKFLOW.instanceId
+              u_callback_url: "http://vm-provisioning-approval.developer-hub/callback"
         eventRef: vmApprovalDecision
         eventDataFilter:
           data: '${ {approved: .approved} }'

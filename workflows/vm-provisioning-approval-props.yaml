@@ -11,9 +11,18 @@ data:
   application.properties: |
     quarkus.tls.trust-all=true
 
+    # HTTP callback — receive CloudEvents via quarkus-http connector on /callback
+    # Channel name must match the CloudEvent type in the workflow event definition
+    # SN Business Rule POSTs CloudEvent with ce-type=vmApprovalDecision to /callback
+    mp.messaging.incoming.vmApprovalDecision.connector=quarkus-http
+    mp.messaging.incoming.vmApprovalDecision.path=/callback
+
     # AAP auth via RHDH proxy — RHDH adds AAP Bearer token internally
     # SN_TO_RHDH_TOKEN env var injected from backstage-external-token-secret
     quarkus.openapi-generator.aap_yaml.auth.bearerAuth.bearer-token=${SN_TO_RHDH_TOKEN}
+
+    # SN auth via RHDH proxy — same token, workflow PATCHes CR with callback info
+    quarkus.openapi-generator.sn_yaml.auth.bearerAuth.bearer-token=${SN_TO_RHDH_TOKEN}
 
     # PostgreSQL persistence — uses same RHDH PostgreSQL, dedicated sonataflow_workflow DB
     # Schema: vm-provisioning-approval (one schema per workflow)
