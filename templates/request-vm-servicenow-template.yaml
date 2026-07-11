@@ -201,6 +201,9 @@ spec:
           priority: "4"
           risk: "3"
           impact: "3"
+          # State -4 = Assessment — this is required for the Approve/Reject buttons
+          # to appear in SN UI. Draft (-5) does not show approval options.
+          state: "-4"
           # Route to Application Development group — any member can approve
           assignment_group: 0a52d3dcd7011200f2d224837e6103f2
           # Set approval to requested so it appears in the group approval queue
