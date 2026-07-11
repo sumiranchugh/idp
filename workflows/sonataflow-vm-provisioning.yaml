@@ -28,8 +28,16 @@ metadata:
   namespace: developer-hub
   annotations:
     sonataflow.org/description: RHEL VM provisioning with ServiceNow approval via Orchestrator
-    sonataflow.org/profile: preview
+    sonataflow.org/profile: gitops
 spec:
+  podTemplate:
+    container:
+      image: image-registry.openshift-image-registry.svc:5000/developer-hub/vm-provisioning-approval@sha256:8467dd77e08a19c9c758e4d3dc7a7477c0db3d6138861a392c829dc58d94d719
+      envFrom:
+        - secretRef:
+            name: sonataflow-workflow-db-secret
+        - secretRef:
+            name: backstage-external-token-secret
   persistence:
     postgresql:
       secretRef:
@@ -86,7 +94,7 @@ spec:
             arguments:
               sys_id: ${ .sncrsysid }
               u_workflow_instance_id: $WORKFLOW.instanceId
-              u_callback_url: "http://vm-provisioning-approval.developer-hub/callback"
+              u_callback_url: "https://vm-provisioning-approval-developer-hub.apps.cluster-k5zwd.dyn.redhatworkshops.io/callback"
         eventRef: vmApprovalDecision
         eventDataFilter:
           data: '${ {approved: .approved} }'

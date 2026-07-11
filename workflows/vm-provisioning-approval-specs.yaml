@@ -1,0 +1,94 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vm-provisioning-approval-specs
+  namespace: developer-hub
+data:
+  aap.yaml: |
+    openapi: "3.0.0"
+    info:
+      title: AAP via RHDH Proxy
+      version: "1.0"
+    servers:
+      - url: "http://backstage-developer-hub.developer-hub"
+    components:
+      securitySchemes:
+        bearerAuth:
+          type: http
+          scheme: bearer
+    security:
+      - bearerAuth: []
+    paths:
+      /api/proxy/aap/api/controller/v2/job_templates/9/launch/:
+        post:
+          operationId: launchVMProvisioningJob
+          summary: Launch RHEL VM provisioning via RHDH proxy
+          security:
+            - bearerAuth: []
+          requestBody:
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    extra_vars:
+                      type: object
+          responses:
+            "201":
+              description: Job launched
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      job:
+                        type: integer
+            "202":
+              description: Job launched (async)
+  sn.yaml: |
+    openapi: "3.0.0"
+    info:
+      title: ServiceNow via RHDH Proxy
+      version: "1.0"
+    servers:
+      - url: "http://backstage-developer-hub.developer-hub"
+    components:
+      securitySchemes:
+        bearerAuth:
+          type: http
+          scheme: bearer
+    security:
+      - bearerAuth: []
+    paths:
+      /api/proxy/servicenow/api/now/table/change_request/{sys_id}:
+        patch:
+          operationId: updateCRCallbackInfo
+          summary: Store callback URL and workflow instance ID in the SN Change Request
+          security:
+            - bearerAuth: []
+          parameters:
+            - name: sys_id
+              in: path
+              required: true
+              schema:
+                type: string
+          requestBody:
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    u_workflow_instance_id:
+                      type: string
+                    u_callback_url:
+                      type: string
+          responses:
+            "200":
+              description: CR updated
+              content:
+                application/json:
+                  schema:
+                    type: object
