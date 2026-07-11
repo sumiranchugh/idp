@@ -1,0 +1,27 @@
+---
+# User-editable application.properties for the vm-provisioning-approval workflow
+# Applied via ConfigMap vm-provisioning-approval-props in developer-hub namespace
+# oc apply -f workflows/vm-provisioning-approval-props.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vm-provisioning-approval-props
+  namespace: developer-hub
+data:
+  application.properties: |
+    quarkus.tls.trust-all=true
+
+    # AAP auth via RHDH proxy — RHDH adds AAP Bearer token internally
+    # SN_TO_RHDH_TOKEN env var injected from backstage-external-token-secret
+    quarkus.openapi-generator.aap_yaml.auth.bearerAuth.bearer-token=${SN_TO_RHDH_TOKEN}
+
+    # PostgreSQL persistence — uses same RHDH PostgreSQL, dedicated sonataflow_workflow DB
+    # Schema: vm-provisioning-approval (one schema per workflow)
+    # Credentials: postgres superuser (sonataflow-workflow-db-secret)
+    quarkus.datasource.jdbc.url=jdbc:postgresql://backstage-psql-developer-hub.developer-hub:5432/sonataflow_workflow?currentSchema=vm-provisioning-approval
+    quarkus.datasource.username=postgres
+    quarkus.datasource.password=REPLACE_WITH_POSTGRESQL_ADMIN_PASSWORD
+
+    # KIE Flyway — creates process_instances and correlation tables (v10.0.2)
+    # Use 'kie.flyway.enabled' NOT 'quarkus.flyway.migrate-at-start'
+    kie.flyway.enabled=true

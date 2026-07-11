@@ -26,6 +26,19 @@ metadata:
     sonataflow.org/description: RHEL VM provisioning with ServiceNow approval via Orchestrator
     sonataflow.org/profile: preview
 spec:
+  # PostgreSQL persistence — workflow instances survive pod restarts
+  # Uses the same RHDH PostgreSQL, separate database sonataflow_workflow
+  persistence:
+    postgresql:
+      secretRef:
+        name: sonataflow-workflow-db-secret
+        userKey: POSTGRES_USER
+        passwordKey: POSTGRES_PASSWORD
+      serviceRef:
+        name: backstage-psql-developer-hub
+        namespace: developer-hub
+        databaseName: sonataflow_workflow
+        port: 5432
   flow:
     id: vm-provisioning-approval
     version: '1.0'
