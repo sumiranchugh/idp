@@ -44,7 +44,7 @@ data:
                     config:
                       layout:
                         gridColumn: 1 / -1
-                        gridRow: 1 / -1
+                        height: calc(100vh - 230px)
 
       # ── ArgoCD (OCI from ghcr.io, no hash needed) ────────────────────────
       # Frontend (npm with integrity — not available as OCI/dist)
