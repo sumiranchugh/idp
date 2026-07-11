@@ -249,16 +249,15 @@ spec:
     # Kogito fully re-establishes process context on callback resume — without it
     # node exit events are sent without a process instance ID and the Data Index
     # drops them silently, leaving the Orchestrator UI stuck at the callback state.
+    # Using servicenow:now:table:modifyRecord (native SN action) instead of
+    # http:backstage:request to avoid proxy PATCH permission issues.
     - id: update-cr-with-instance-id
       name: Store Workflow Instance ID in ServiceNow CR
-      action: http:backstage:request
+      action: servicenow:now:table:modifyRecord
       input:
-        method: PATCH
-        path: /api/proxy/servicenow/api/now/table/change_request/${{ steps['create-sn-cr'].output.result.sys_id }}
-        headers:
-          Content-Type: application/json
-          Accept: application/json
-        body:
+        tableName: change_request
+        sysId: ${{ steps['create-sn-cr'].output.result.sys_id }}
+        requestBody:
           u_workflow_instance_id: ${{ steps['start-workflow'].output.instanceUrl.split('/') | last }}
 
   output:
