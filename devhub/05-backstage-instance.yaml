@@ -166,6 +166,7 @@ data:
           target: ${SN_BASE_URL}
           changeOrigin: true
           secure: true
+          allowedMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE']
           headers:
             Authorization: Basic ${SN_BASIC_AUTH}
 
