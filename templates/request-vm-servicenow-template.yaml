@@ -245,6 +245,8 @@ spec:
           sn_incident_number: ${{ steps['create-sn-incident'].output.result.number }}
           sncrsysid: ${{ steps['create-sn-cr'].output.result.sys_id }}
           sn_cr_number: ${{ steps['create-sn-cr'].output.result.number }}
+          sn_cr_url: "https://dev423121.service-now.com/change_request.do?sys_id=${{ steps['create-sn-cr'].output.result.sys_id }}"
+          sn_incident_url: "https://dev423121.service-now.com/incident.do?sys_id=${{ steps['create-sn-incident'].output.result.sys_id }}"
 
     # Step 5: Write workflow instance ID back to the SN CR
     # The Business Rule includes this as ce-kogitoprocinstid in the CloudEvent so
