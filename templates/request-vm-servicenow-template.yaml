@@ -201,9 +201,10 @@ spec:
           priority: "4"
           risk: "3"
           impact: "3"
-          # Application Development group (sys_id: 0a52d3dcd7011200f2d224837e6103f2)
-          # Any member of this group can approve the CR in ServiceNow
+          # Route to Application Development group — any member can approve
           assignment_group: 0a52d3dcd7011200f2d224837e6103f2
+          # Set approval to requested so it appears in the group approval queue
+          approval: requested
           u_incident_sys_id: ${{ steps['create-sn-incident'].output.result.sys_id }}
           u_backstage_entity_id: rhel-vm-provisioning
           u_vm_name: ${{ parameters.vm_name }}
@@ -215,21 +216,9 @@ spec:
           u_vm_user: ${{ parameters.vm_user }}
           u_aap_triggered: "false"
 
-    # Step 3: Request approval from a member of Application Development group
-    # The CR is assigned to the Application Development group (assignment_group).
-    # The explicit approver record routes it to sumiran chugh (member of App Dev group).
-    # In production: configure SN's Approval Policy to auto-route to the group
-    # so any group member can approve without a hardcoded user.
-    - id: add-approver
-      name: Request Approval (Application Development)
-      action: servicenow:now:table:createRecord
-      input:
-        tableName: sysapproval_approver
-        requestBody:
-          sysapproval: ${{ steps['create-sn-cr'].output.result.sys_id }}
-          approver: 2d7886642f46cb109217a8aa6fa4e3e4
-          source_table: change_request
-          state: requested
+    # Step 3: No individual approver record needed — the CR itself has approval:requested
+    # and assignment_group: Application Development. Any group member can open the CR
+    # in ServiceNow and click Approve. The Business Rule fires on approval=approved.
 
     # Step 4: Start Orchestrator workflow — tracks approval state
     - id: start-workflow
