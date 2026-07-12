@@ -27,7 +27,7 @@ metadata:
 spec:
   podTemplate:
     container:
-      image: image-registry.openshift-image-registry.svc:5000/developer-hub/vm-provisioning-approval@sha256:8467dd77e08a19c9c758e4d3dc7a7477c0db3d6138861a392c829dc58d94d719
+      image: image-registry.openshift-image-registry.svc:5000/developer-hub/vm-provisioning-approval@sha256:178d1c795b07ed0e6d7792f4774bedc27fc1042c6d1ad4b7a9be034fe32ecfcb
       envFrom:
         - secretRef:
             name: sonataflow-workflow-db-secret
