@@ -272,7 +272,7 @@
       when: sn_incident_sys_id is defined and sn_incident_sys_id | length > 0
       ignore_errors: true
 
-    - name: Close ServiceNow Change Request
+    - name: Transition CR through Change Management states to Close
       uri:
         url: "https://dev423121.service-now.com/api/now/table/change_request/{{ sn_cr_sys_id }}"
         method: PATCH
@@ -280,14 +280,16 @@
         headers:
           Authorization: "Basic {{ servicenow_auth | default('YWRtaW46WXMrRXhUbDdQeioz') }}"
           Content-Type: application/json
-        body:
-          state: "3"
-          close_code: "successful"
-          close_notes: >
-            VM {{ vm_name }} provisioned successfully.
-            Automated by Ansible Automation Platform.
+        body: "{{ item.body }}"
         status_code: [200, 201, 204]
         validate_certs: false
+      loop:
+        - body: { "state": "-2" }
+        - body: { "state": "-1" }
+        - body: { "state": "0" }
+        - body: { "state": "3", "close_code": "successful", "close_notes": "VM {{ vm_name }} provisioned successfully. Automated by Ansible Automation Platform." }
+      loop_control:
+        pause: 1
       when: sn_cr_sys_id is defined and sn_cr_sys_id | length > 0
       ignore_errors: true
 
