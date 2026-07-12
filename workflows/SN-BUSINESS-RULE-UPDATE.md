@@ -63,6 +63,13 @@ Previously active. Disabled because:
 - Used internal cluster URL that SN cannot reach
 - Had a broad filter (`approvalCHANGES`) that would fire on any CR approval change
 
+## Change Approval Configuration
+
+CAB Approval (sys_id: `45358a5db701230034d1da23ee11a938`) is set to
+`mandatory: false` so that one approver from the Assignment Group is sufficient
+to approve the Change Request. CAB records are still generated but do not block
+the CR from being marked as approved.
+
 ## Custom Fields on change_request
 
 | Field | Label | Type | Purpose |
