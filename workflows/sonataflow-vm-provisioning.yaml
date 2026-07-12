@@ -10,17 +10,12 @@
 #   4. SN Business Rule fires:
 #      - POSTs CloudEvent to callback URL with ce-kogitoprocrefid = instance ID
 #   5. Workflow resumes → Provision VM via AAP (through RHDH proxy)
-#
-# HTTP callback pattern per SonataFlow docs:
-#   https://sonataflow.org/serverlessworkflow/main/use-cases/advanced-developer-use-cases/callbacks/openapi-callback-events-example.html
+#   6. AAP provisions VM, updates SN records, then sends completion CloudEvent
+#   7. Workflow receives completion on /callback-aap → marks as done
 #
 # Auth: SN_TO_RHDH_TOKEN env var from backstage-external-token-secret
 #   AAP: quarkus.openapi-generator.aap_yaml.auth.bearerAuth.bearer-token
 #   SN:  quarkus.openapi-generator.sn_yaml.auth.bearerAuth.bearer-token
-#
-# Incoming CloudEvent endpoint: POST /callback (quarkus-http connector)
-#   Configured via: mp.messaging.incoming.vmApprovalDecision.connector=quarkus-http
-#   Uses kogitoprocrefid for process context propagation to Data Index
 apiVersion: sonataflow.org/v1alpha08
 kind: SonataFlow
 metadata:
@@ -53,10 +48,10 @@ spec:
     id: vm-provisioning-approval
     version: '1.0'
     specVersion: '0.8'
-    name: RHEL VM Provisioning — ServiceNow Approval
+    name: RHEL VM Provisioning
     description: >
-      Uses HTTP callback pattern: stores callback URL in SN CR, waits for
-      CloudEvent via quarkus-http connector on /callback, then triggers AAP.
+      Self-service RHEL VM provisioning with ServiceNow approval.
+      Uses HTTP callback pattern for both SN approval and AAP completion notifications.
     annotations:
       - 'workflow-type:infrastructure'
 
@@ -77,6 +72,9 @@ spec:
         type: vmApprovalDecision
         correlation:
           - contextAttributeName: sncrsysid
+      - name: vmProvisioningComplete
+        source: aap
+        type: vmProvisioningComplete
 
     states:
       - name: Request Received
@@ -133,13 +131,33 @@ spec:
                   sn_request_number: ${ .sn_cr_number }
                   sn_cr_sys_id: ${ .sncrsysid }
                   sn_incident_sys_id: ${ .sn_incident_sys_id }
+                  workflow_callback_url: "https://vm-provisioning-approval-developer-hub.apps.cluster-k5zwd.dyn.redhatworkshops.io/callback-aap"
+                  workflow_instance_id: $WORKFLOW.instanceId
             actionDataFilter:
               results: .result
               toStateData: .aapJob
         stateDataFilter:
-          output: >
-            { "workflow_status": "VM Provisioning Started",
-              "aap_job_id": (.aapJob.id // .aapJob.job | tostring) }
+          output: '. + {"workflow_status": "VM Provisioning In Progress", "aap_job_id": (.aapJob.id // .aapJob.job | tostring)}'
+        transition: Awaiting VM Provisioning
+
+      - name: Awaiting VM Provisioning
+        type: callback
+        action:
+          name: log-provisioning-started
+          functionRef:
+            refName: logState
+            arguments:
+              message: '"Waiting for VM provisioning to complete"'
+        eventRef: vmProvisioningComplete
+        eventDataFilter:
+          data: '${ {vm_provisioned: .vm_provisioned, vm_status: .vm_status, ssh_service: .ssh_service} }'
+          toStateData: .provisioningResult
+        transition: VM Provisioned
+
+      - name: VM Provisioned
+        type: inject
+        data:
+          workflow_status: VM Provisioned
         end:
           terminate: true
 

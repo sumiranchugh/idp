@@ -290,3 +290,27 @@
         validate_certs: false
       when: sn_cr_sys_id is defined and sn_cr_sys_id | length > 0
       ignore_errors: true
+
+    # ── Notify SonataFlow workflow that provisioning is complete ─────────
+    - name: Notify SonataFlow workflow of VM provisioning completion
+      uri:
+        url: "{{ workflow_callback_url }}"
+        method: POST
+        body_format: json
+        headers:
+          Content-Type: application/json
+          ce-specversion: "1.0"
+          ce-type: vmProvisioningComplete
+          ce-source: aap
+          ce-id: "{{ vm_name }}-provisioned"
+          ce-kogitoprocrefid: "{{ workflow_instance_id }}"
+        body:
+          vm_provisioned: true
+          vm_name: "{{ vm_name }}"
+          vm_namespace: "{{ vm_namespace }}"
+          vm_status: "{{ vm_status.resources[0].status.printableStatus | default('Running') }}"
+          ssh_service: "{{ vm_name }}-ssh.{{ vm_namespace }}.svc.cluster.local"
+        validate_certs: false
+        status_code: [200, 201, 202, 204]
+      when: workflow_callback_url is defined and workflow_callback_url | length > 0
+      ignore_errors: true

@@ -17,6 +17,10 @@ data:
     mp.messaging.incoming.vmApprovalDecision.connector=quarkus-http
     mp.messaging.incoming.vmApprovalDecision.path=/callback
 
+    # AAP completion callback — receives CloudEvent when VM provisioning finishes
+    mp.messaging.incoming.vmProvisioningComplete.connector=quarkus-http
+    mp.messaging.incoming.vmProvisioningComplete.path=/callback-aap
+
     # AAP auth via RHDH proxy — RHDH adds AAP Bearer token internally
     # SN_TO_RHDH_TOKEN env var injected from backstage-external-token-secret
     quarkus.openapi-generator.aap_yaml.auth.bearerAuth.bearer-token=${SN_TO_RHDH_TOKEN}
