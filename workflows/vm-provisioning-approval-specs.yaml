@@ -85,9 +85,46 @@ data:
                       type: string
                     u_callback_url:
                       type: string
+                    state:
+                      type: string
+                    close_code:
+                      type: string
+                    close_notes:
+                      type: string
           responses:
             "200":
               description: CR updated
+              content:
+                application/json:
+                  schema:
+                    type: object
+      /api/proxy/servicenow/api/now/table/incident/{sys_id}:
+        patch:
+          operationId: resolveIncident
+          summary: Resolve a ServiceNow incident
+          security:
+            - bearerAuth: []
+          parameters:
+            - name: sys_id
+              in: path
+              required: true
+              schema:
+                type: string
+          requestBody:
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    state:
+                      type: string
+                    close_code:
+                      type: string
+                    close_notes:
+                      type: string
+          responses:
+            "200":
+              description: Incident updated
               content:
                 application/json:
                   schema:

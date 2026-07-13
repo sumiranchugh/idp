@@ -243,57 +243,9 @@
           vm_status: "{{ vm_status.resources[0].status.printableStatus | default('Unknown') }}"
           ssh_service: "{{ vm_name }}-ssh.{{ vm_namespace }}.svc.cluster.local"
 
-    # ── Update ServiceNow records on successful provisioning ──────────────
-    # ── Notify RHDH catalog to refresh (so new VM shows in K8s tab) ──────────
-    # NOTE: Per-VM Backstage Component entities require writing catalog-info.yaml
-    # to a Git repository that RHDH monitors. Configure AAP with GitHub credentials
-    # and add a playbook step to commit catalog/vms/{{ vm_name }}.yaml to the idp repo.
-    # For now, VMs appear in the Kubernetes tab of the rhel-vm-provisioning component
-    # via the backstage.io/kubernetes-id=rhel-vm-provisioning label on the VM resource.
-
-    - name: Resolve ServiceNow Incident
-      uri:
-        url: "https://dev423121.service-now.com/api/now/table/incident/{{ sn_incident_sys_id }}"
-        method: PATCH
-        body_format: json
-        headers:
-          Authorization: "Basic {{ servicenow_auth | default('YWRtaW46WXMrRXhUbDdQeioz') }}"
-          Content-Type: application/json
-        body:
-          state: "6"
-          close_code: "Solution provided"
-          close_notes: >
-            VM {{ vm_name }} successfully provisioned.
-            Status: {{ vm_status.resources[0].status.printableStatus | default('Running') }}
-            SSH: ssh {{ vm_user | default('cloud-user') }}@{{ vm_name }}-ssh.{{ vm_namespace }}.svc.cluster.local
-            Provisioned by: Ansible Automation Platform / Red Hat Developer Hub
-        status_code: [200, 201, 204]
-        validate_certs: false
-      when: sn_incident_sys_id is defined and sn_incident_sys_id | length > 0
-      ignore_errors: true
-
-    - name: Transition CR through Change Management states to Close
-      uri:
-        url: "https://dev423121.service-now.com/api/now/table/change_request/{{ sn_cr_sys_id }}"
-        method: PATCH
-        body_format: json
-        headers:
-          Authorization: "Basic {{ servicenow_auth | default('YWRtaW46WXMrRXhUbDdQeioz') }}"
-          Content-Type: application/json
-        body: "{{ item.body }}"
-        status_code: [200, 201, 204]
-        validate_certs: false
-      loop:
-        - body: { "state": "-2" }
-        - body: { "state": "-1" }
-        - body: { "state": "0" }
-        - body: { "state": "3", "close_code": "successful", "close_notes": "VM {{ vm_name }} provisioned successfully. Automated by Ansible Automation Platform." }
-      loop_control:
-        pause: 1
-      when: sn_cr_sys_id is defined and sn_cr_sys_id | length > 0
-      ignore_errors: true
-
     # ── Notify SonataFlow workflow that provisioning is complete ─────────
+    # SN incident resolution and CR closure are handled by the SonataFlow
+    # workflow after it receives this callback — not by the playbook.
     - name: Notify SonataFlow workflow of VM provisioning completion
       uri:
         url: "{{ workflow_callback_url }}"

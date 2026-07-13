@@ -10,8 +10,9 @@
 #   4. SN Business Rule fires:
 #      - POSTs CloudEvent to callback URL with ce-kogitoprocrefid = instance ID
 #   5. Workflow resumes → Provision VM via AAP (through RHDH proxy)
-#   6. AAP provisions VM, updates SN records, then sends completion CloudEvent
-#   7. Workflow receives completion on /callback-aap → marks as done
+#   6. AAP provisions VM on OpenShift, sends completion CloudEvent
+#   7. Workflow receives completion on /callback-aap
+#   8. Workflow closes SN records: resolves incident, transitions CR to Closed
 #
 # Auth: SN_TO_RHDH_TOKEN env var from backstage-external-token-secret
 #   AAP: quarkus.openapi-generator.aap_yaml.auth.bearerAuth.bearer-token
@@ -65,6 +66,12 @@ spec:
       - name: triggerAAP
         type: rest
         operation: specs/aap.yaml#launchVMProvisioningJob
+      - name: resolveIncident
+        type: rest
+        operation: specs/sn.yaml#resolveIncident
+      - name: closeCR
+        type: rest
+        operation: specs/sn.yaml#updateCRCallbackInfo
 
     events:
       - name: vmApprovalDecision
@@ -128,9 +135,6 @@ spec:
                   vm_user: ${ .vm_user }
                   vm_password: redhat
                   ssh_public_key: '${ .ssh_public_key // "" }'
-                  sn_request_number: ${ .sn_cr_number }
-                  sn_cr_sys_id: ${ .sncrsysid }
-                  sn_incident_sys_id: ${ .sn_incident_sys_id }
                   workflow_callback_url: "https://vm-provisioning-approval-developer-hub.apps.cluster-k5zwd.dyn.redhatworkshops.io/callback-aap"
                   workflow_instance_id: $WORKFLOW.instanceId
             actionDataFilter:
@@ -152,6 +156,57 @@ spec:
         eventDataFilter:
           data: '${ {vm_provisioned: .vm_provisioned, vm_status: .vm_status, ssh_service: .ssh_service} }'
           toStateData: .provisioningResult
+        transition: Close ServiceNow Records
+
+      - name: Close ServiceNow Records
+        type: operation
+        actions:
+          - name: resolve-incident
+            functionRef:
+              refName: resolveIncident
+              arguments:
+                sys_id: ${ .sn_incident_sys_id }
+                state: "6"
+                close_code: "Solution provided"
+                close_notes: '${ "VM " + .provisioningResult.vm_name + " provisioned successfully. Status: " + (.provisioningResult.vm_status // "Running") + ". SSH: ssh " + (.vm_user // "cloud-user") + "@" + (.provisioningResult.ssh_service // "N/A") + ". Provisioned by: AAP / Red Hat Developer Hub." }'
+            actionDataFilter:
+              toStateData: .incidentResult
+          - name: cr-to-scheduled
+            functionRef:
+              refName: closeCR
+              arguments:
+                sys_id: ${ .sncrsysid }
+                state: "-2"
+            actionDataFilter:
+              toStateData: .crTransition1
+          - name: cr-to-implement
+            functionRef:
+              refName: closeCR
+              arguments:
+                sys_id: ${ .sncrsysid }
+                state: "-1"
+            actionDataFilter:
+              toStateData: .crTransition2
+          - name: cr-to-review
+            functionRef:
+              refName: closeCR
+              arguments:
+                sys_id: ${ .sncrsysid }
+                state: "0"
+            actionDataFilter:
+              toStateData: .crTransition3
+          - name: cr-to-closed
+            functionRef:
+              refName: closeCR
+              arguments:
+                sys_id: ${ .sncrsysid }
+                state: "3"
+                close_code: "successful"
+                close_notes: '${ "VM " + .provisioningResult.vm_name + " provisioned successfully. Automated by Red Hat Developer Hub Orchestrator." }'
+            actionDataFilter:
+              toStateData: .crTransition4
+        stateDataFilter:
+          output: '. + {"workflow_status": "ServiceNow Records Closed"}'
         transition: VM Provisioned
 
       - name: VM Provisioned
