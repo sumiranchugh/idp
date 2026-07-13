@@ -2,6 +2,23 @@
 apiVersion: backstage.io/v1alpha1
 kind: Group
 metadata:
+  name: application-team
+  namespace: default
+  description: Application development team responsible for developing and maintaining applications
+  annotations:
+    backstage.io/managed-by-location: url:https://github.com/sumiranchugh/idp/blob/main/developer-hub-config/catalog/platform-team.yaml
+spec:
+  type: team
+  profile:
+    displayName: Application Team
+    email: application@example.com
+  children: []
+  members:
+    - sumiranchugh
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
   name: platform-team
   namespace: default
   description: Platform engineering team responsible for infrastructure, IDP, and VM provisioning
@@ -21,12 +38,13 @@ kind: User
 metadata:
   name: sumiranchugh
   namespace: default
-  description: Platform team lead — super admin access
+  description: super admin access
   annotations:
     backstage.io/managed-by-location: url:https://github.com/sumiranchugh/idp/blob/main/developer-hub-config/catalog/platform-team.yaml
 spec:
   profile:
-    displayName: Sumir Anchugh
+    displayName: Sumiran Chugh
     email: sumiranchugh@example.com
   memberOf:
     - platform-team
+    - application-team
