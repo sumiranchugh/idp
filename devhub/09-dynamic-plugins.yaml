@@ -127,6 +127,34 @@ data:
                       layout:
                         gridColumn: 1 / -1
 
+      # ── Ansible / AAP Plugins (OCI from registry.redhat.io) ──────────────
+      # Requires rhdh-pull-secret with registry.redhat.io credentials
+      # Tech Preview — syncs AAP job templates into catalog, adds /ansible sidebar
+      # Frontend — Ansible sidebar page, learning paths, catalog views
+      - package: "oci://registry.redhat.io/ansible-automation-platform/automation-portal:2.1!ansible-plugin-backstage-rhaap"
+        disabled: false
+        pluginConfig:
+          dynamicPlugins:
+            frontend:
+              ansible.plugin-backstage-rhaap:
+                appIcons:
+                  - importName: AnsibleLogo
+                    name: AnsibleLogo
+                dynamicRoutes:
+                  - importName: AnsiblePage
+                    menuItem:
+                      icon: AnsibleLogo
+                      text: Ansible
+                    path: /ansible
+
+      # Backend — AAP catalog provider, syncs job templates as Resources
+      - package: "oci://registry.redhat.io/ansible-automation-platform/automation-portal:2.1!ansible-plugin-backstage-rhaap-backend"
+        disabled: false
+
+      # Scaffolder actions — rhaap:* actions for launching AAP jobs from templates
+      - package: "oci://registry.redhat.io/ansible-automation-platform/automation-portal:2.1!ansible-plugin-scaffolder-backend-module-backstage-rhaap"
+        disabled: false
+
       # ── RBAC Admin Console (dist, no hash needed) ─────────────────────────
       - package: "./dynamic-plugins/dist/backstage-community-plugin-rbac"
         disabled: false

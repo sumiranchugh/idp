@@ -172,9 +172,13 @@ data:
 
     # Ansible/AAP plugin configuration
     ansible:
-      aap:
-        baseURL: ${AAP_BASE_URL}
+      creatorService:
+        baseUrl: 127.0.0.1
+        port: '8000'
+      rhaap:
+        baseUrl: ${AAP_BASE_URL}
         token: ${AAP_TOKEN}
+        checkSSL: false
 
     catalog:
       import:
@@ -198,11 +202,27 @@ data:
         # VM infrastructure component (has servicenow.com/entity-id annotation for SN tab)
         - type: url
           target: https://github.com/sumiranchugh/idp/blob/main/catalog/vm-infrastructure.yaml
+        # Ansible software templates (playbook/collection creators)
+        - type: url
+          target: https://github.com/ansible/ansible-rhdh-templates/blob/main/all.yaml
 
       # Auto-create user entities for OAuth users
       orphanStrategy: delete
 
       providers:
+        # AAP catalog provider — syncs job templates into Backstage catalog
+        rhaap:
+          development:
+            baseUrl: ${AAP_BASE_URL}
+            authorization: "Bearer ${AAP_TOKEN}"
+            sync:
+              jobTemplates:
+                enabled: true
+                schedule:
+                  frequency:
+                    minutes: 30
+                  timeout:
+                    minutes: 3
         ocm:
           env:
             name: production
