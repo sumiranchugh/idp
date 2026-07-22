@@ -32,6 +32,12 @@ metadata:
     - url: https://aap-platform-aap.apps.cluster-z5jjn.dyn.redhatworkshops.io
       title: Ansible Automation Platform
       icon: dashboard
+    - url: https://aap-platform-aap.apps.cluster-z5jjn.dyn.redhatworkshops.io/#/jobs
+      title: AAP — Job Runs
+      icon: dashboard
+    - url: https://aap-platform-aap.apps.cluster-z5jjn.dyn.redhatworkshops.io/#/templates
+      title: AAP — Job Templates
+      icon: dashboard
     - url: "https://dev423121.service-now.com/change_request_list.do?sysparm_query=u_backstage_entity_idSTARTSWITHrhel-vm-provisioning^ORu_backstage_entity_id=rhel-vm-provisioning&sysparm_view=&sysparm_limit=20"
       title: ServiceNow — VM Change Requests
       icon: dashboard

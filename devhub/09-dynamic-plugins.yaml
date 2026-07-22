@@ -147,16 +147,6 @@ data:
                       icon: AnsibleLogo
                       text: Ansible
                     path: /ansible
-                entityTabs:
-                  - path: /ansible
-                    title: Ansible
-                    mountPoint: entity.page.ansible
-                mountPoints:
-                  - mountPoint: entity.page.ansible/cards
-                    importName: AnsiblePage
-                    config:
-                      layout:
-                        gridColumn: 1 / -1
 
       # Backend — AAP catalog provider, syncs job templates as Resources
       - package: "oci://registry.redhat.io/ansible-automation-platform/automation-portal:2.1!ansible-plugin-backstage-rhaap-backend"
