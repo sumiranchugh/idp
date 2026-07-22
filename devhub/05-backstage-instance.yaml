@@ -137,6 +137,7 @@ data:
           target: ${AAP_BASE_URL}
           changeOrigin: true
           secure: false
+          allowedMethods: ['GET', 'POST']
           headers:
             Authorization: Bearer ${AAP_TOKEN}
         # ServiceNow proxy - used by approval-based template

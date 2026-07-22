@@ -11,7 +11,7 @@ data:
       title: AAP via RHDH Proxy
       version: "1.0"
     servers:
-      - url: "http://backstage-developer-hub.developer-hub"
+      - url: "http://backstage-developer-hub.__RHDH_NAMESPACE__"
     components:
       securitySchemes:
         bearerAuth:
@@ -20,7 +20,7 @@ data:
     security:
       - bearerAuth: []
     paths:
-      /api/proxy/aap/api/controller/v2/job_templates/9/launch/:
+      /api/proxy/aap/api/controller/v2/job_templates/__AAP_JOB_TEMPLATE_ID__/launch/:
         post:
           operationId: launchVMProvisioningJob
           summary: Launch RHEL VM provisioning via RHDH proxy
@@ -54,7 +54,7 @@ data:
       title: ServiceNow via RHDH Proxy
       version: "1.0"
     servers:
-      - url: "http://backstage-developer-hub.developer-hub"
+      - url: "http://backstage-developer-hub.__RHDH_NAMESPACE__"
     components:
       securitySchemes:
         bearerAuth:
