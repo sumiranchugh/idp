@@ -4,7 +4,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: rbac-policy
-  namespace: developer-hub
+  namespace: __RHDH_NAMESPACE__
 data:
   rbac-policy.csv: |
     # ── Catalog permissions ───────────────────────────────────────────────
@@ -47,9 +47,8 @@ data:
     p, role:default/admin, policy.entity.delete, delete, allow
 
     # ── Role assignments ──────────────────────────────────────────────────
-    # sumiranchugh: super admin (rbac_admin = manage RBAC + full admin role)
-    g, user:default/sumiranchugh, role:default/rbac_admin
-    g, user:default/sumiranchugh, role:default/admin
+    g, user:default/__RHDH_SUPERADMIN__, role:default/rbac_admin
+    g, user:default/__RHDH_SUPERADMIN__, role:default/admin
 
     # All authenticated users get the basic user role
     g, user:default/*, role:default/user

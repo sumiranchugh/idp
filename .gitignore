@@ -8,6 +8,9 @@ secrets/*.yaml
 .env
 *.env
 
+# Kubeconfig
+kubeconfig*.yaml
+
 # Backup files
 *.bak
 

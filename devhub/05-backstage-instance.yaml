@@ -3,15 +3,12 @@ apiVersion: rhdh.redhat.com/v1alpha5
 kind: Backstage
 metadata:
   name: developer-hub
-  namespace: developer-hub
+  namespace: __RHDH_NAMESPACE__
 spec:
-  # Enable Orchestrator via flavours (auto-configures all Orchestrator plugins + SonataFlow)
   flavours:
   - name: orchestrator
     enabled: true
 
-  # Replace ephemeral dynamic-plugins-root with a PVC for plugin caching
-  # Doc: must use $patch: replace to override the default emptyDir
   deployment:
     patch:
       spec:
@@ -36,15 +33,16 @@ spec:
         insecureEdgeTerminationPolicy: Redirect
 
     extraEnvs:
+      envs:
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: "0"
       secrets:
         - name: backstage-secrets
-        - name: backstage-psql-secret-developer-hub
-        - name: backstage-github-auth
+        - name: oauth-client
         - name: backstage-aap-secret
         - name: backstage-servicenow-secret
         - name: backstage-external-token-secret
 
-    # Mount RBAC policy CSV — extraFiles is the correct doc-supported way
     extraFiles:
       configMaps:
         - name: rbac-policy
@@ -58,35 +56,25 @@ spec:
       configMaps:
         - name: app-config-rhdh
 
-    # PVC for faster restarts - caches downloaded plugins
-    # Reduces restart time from 5-6 min to 2-3 min
-
   database:
     enableLocalDb: true
-    # For production, use external PostgreSQL:
-    # enableLocalDb: false
-    # host: postgresql.example.com
-    # port: 5432
-    # user: backstage
-    # database: backstage
-    # passwordSecret:
-    #   name: backstage-db-secret
-    #   key: password
 
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: app-config-rhdh
-  namespace: developer-hub
+  namespace: __RHDH_NAMESPACE__
 data:
   app-config-rhdh.yaml: |
     app:
       title: Red Hat Developer Hub
-      baseUrl: https://backstage-developer-hub-developer-hub.apps.cluster-k5zwd.dyn.redhatworkshops.io
+      baseUrl: https://__RHDH_ROUTE__
 
     organization:
       name: My Organization
+
+    signInPage: oidc
 
     backend:
       auth:
@@ -97,38 +85,28 @@ data:
             options:
               token: ${SN_TO_RHDH_TOKEN}
               subject: servicenow-integration
-      baseUrl: https://backstage-developer-hub-developer-hub.apps.cluster-k5zwd.dyn.redhatworkshops.io
+      baseUrl: https://__RHDH_ROUTE__
       cors:
-        origin: https://backstage-developer-hub-developer-hub.apps.cluster-k5zwd.dyn.redhatworkshops.io
+        origin: https://__RHDH_ROUTE__
         credentials: true
+      csp:
+        upgrade-insecure-requests: false
 
-      database:
-        client: pg
-        connection:
-          host: ${POSTGRES_HOST}
-          port: ${POSTGRES_PORT}
-          user: ${POSTGRES_USER}
-          password: ${POSTGRES_PASSWORD}
-          database: backstage_plugin_catalog
-
-    # GitHub OAuth Authentication - allow login without catalog user
     auth:
       environment: production
       session:
         secret: ${BACKEND_SECRET}
       providers:
-        github:
+        oidc:
           production:
-            clientId: ${GITHUB_CLIENT_ID}
-            clientSecret: ${GITHUB_CLIENT_SECRET}
+            prompt: login
+            metadataUrl: __KEYCLOAK_BASE_URL__/realms/__KEYCLOAK_REALM__/.well-known/openid-configuration
+            clientId: ${OAUTH_CLIENT_ID}
+            clientSecret: ${OAUTH_CLIENT_SECRET}
             signIn:
               resolvers:
-                - resolver: usernameMatchingUserEntityName
-                  dangerouslyAllowSignInWithoutUserInCatalog: true
+                - resolver: preferredUsernameMatchingUserEntityName
 
-    # Permission policy - sumiranchugh is super admin, all others get regular admin
-    # ServiceNow connection — credentials from backstage-servicenow-secret
-    # Plugin reads these from app-config (community OCI plugin 1.10--2.15.1)
     servicenow:
       baseUrl: ${SERVICENOW_BASE_URL}
       instanceUrl: ${SERVICENOW_BASE_URL}
@@ -149,7 +127,7 @@ data:
           - topology
         admin:
           users:
-            - name: user:default/sumiranchugh
+            - name: user:default/__RHDH_SUPERADMIN__
 
     # Proxy configuration
     proxy:
@@ -187,21 +165,16 @@ data:
         - allow: [Component, System, API, Resource, Location, Template, User, Group]
 
       locations:
-        # Default templates
         - type: url
           target: https://github.com/janus-idp/software-templates/blob/main/showcase-templates.yaml
-        # VM provisioning template (direct — no approval)
         - type: url
-          target: https://github.com/sumiranchugh/idp/blob/main/templates/create-vm-template.yaml
-        # VM request template (Orchestrator + ServiceNow approval workflow)
+          target: __GITHUB_REPO_BASE__/templates/create-vm-template.yaml
         - type: url
-          target: https://github.com/sumiranchugh/idp/blob/main/templates/request-vm-servicenow-template.yaml
-        # Platform team group + users
+          target: __GITHUB_REPO_BASE__/templates/request-vm-servicenow-template.yaml
         - type: url
-          target: https://github.com/sumiranchugh/idp/blob/main/catalog/platform-team.yaml
-        # VM infrastructure component (has servicenow.com/entity-id annotation for SN tab)
+          target: __GITHUB_REPO_BASE__/catalog/platform-team.yaml
         - type: url
-          target: https://github.com/sumiranchugh/idp/blob/main/catalog/vm-infrastructure.yaml
+          target: __GITHUB_REPO_BASE__/catalog/vm-infrastructure.yaml
         # Ansible software templates (playbook/collection creators)
         - type: url
           target: https://github.com/ansible/ansible-rhdh-templates/blob/main/all.yaml
@@ -248,7 +221,7 @@ data:
       clusterLocatorMethods:
         - type: config
           clusters:
-            - url: https://api.cluster-k5zwd.dyn.redhatworkshops.io:6443
+            - url: __CLUSTER_API_URL__
               name: local-cluster
               authProvider: serviceAccount
               skipTLSVerify: true
@@ -308,12 +281,11 @@ data:
       ocm: true
 
 ---
-# ServiceAccount for Kubernetes plugin
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: backstage-kubernetes
-  namespace: developer-hub
+  namespace: __RHDH_NAMESPACE__
 
 ---
 # ClusterRole for Kubernetes plugin
@@ -356,7 +328,6 @@ rules:
       - watch
 
 ---
-# ClusterRoleBinding for Kubernetes plugin
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -368,5 +339,5 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: backstage-kubernetes
-    namespace: developer-hub
+    namespace: __RHDH_NAMESPACE__
 

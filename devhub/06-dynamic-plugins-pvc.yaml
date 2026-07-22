@@ -12,7 +12,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: dynamic-plugins-root
-  namespace: developer-hub
+  namespace: __RHDH_NAMESPACE__
 spec:
   accessModes:
     - ReadWriteOnce
@@ -21,4 +21,4 @@ spec:
       storage: 2Gi
   # Update this to match your cluster's storage class
   # Check available storage classes: oc get storageclass
-  storageClassName: gp3-csi
+  storageClassName: __STORAGE_CLASS__

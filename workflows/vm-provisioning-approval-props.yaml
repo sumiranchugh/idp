@@ -6,7 +6,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: vm-provisioning-approval-props
-  namespace: developer-hub
+  namespace: __RHDH_NAMESPACE__
 data:
   application.properties: |
     quarkus.tls.trust-all=true

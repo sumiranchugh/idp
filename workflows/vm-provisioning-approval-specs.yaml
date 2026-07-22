@@ -3,7 +3,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: vm-provisioning-approval-specs
-  namespace: developer-hub
+  namespace: __RHDH_NAMESPACE__
 data:
   aap.yaml: |
     openapi: "3.0.0"

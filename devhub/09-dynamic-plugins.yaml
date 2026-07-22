@@ -10,7 +10,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: rhdh-custom-dynamic-plugins
-  namespace: developer-hub
+  namespace: __RHDH_NAMESPACE__
 data:
   dynamic-plugins.yaml: |
     includes:
@@ -131,8 +131,9 @@ data:
       # Requires rhdh-pull-secret with registry.redhat.io credentials
       # Tech Preview — syncs AAP job templates into catalog, adds /ansible sidebar
       # Frontend — Ansible sidebar page, learning paths, catalog views
+      # Requires rhdh-pull-secret with registry.redhat.io credentials
       - package: "oci://registry.redhat.io/ansible-automation-platform/automation-portal:2.1!ansible-plugin-backstage-rhaap"
-        disabled: false
+        disabled: true
         pluginConfig:
           dynamicPlugins:
             frontend:
@@ -149,11 +150,32 @@ data:
 
       # Backend — AAP catalog provider, syncs job templates as Resources
       - package: "oci://registry.redhat.io/ansible-automation-platform/automation-portal:2.1!ansible-plugin-backstage-rhaap-backend"
-        disabled: false
+        disabled: true
 
       # Scaffolder actions — rhaap:* actions for launching AAP jobs from templates
       - package: "oci://registry.redhat.io/ansible-automation-platform/automation-portal:2.1!ansible-plugin-scaffolder-backend-module-backstage-rhaap"
+        disabled: true
+
+      # ── Keycloak Catalog Sync (dist, no hash needed) ─────────────────────
+      - package: "./dynamic-plugins/dist/backstage-community-plugin-catalog-backend-module-keycloak-dynamic"
         disabled: false
+        pluginConfig:
+          catalog:
+            providers:
+              keycloakOrg:
+                default:
+                  baseUrl: __KEYCLOAK_BASE_URL__
+                  realm: __KEYCLOAK_REALM__
+                  loginRealm: __KEYCLOAK_REALM__
+                  clientId: ${OAUTH_CLIENT_ID}
+                  clientSecret: ${OAUTH_CLIENT_SECRET}
+                  schedule:
+                    frequency:
+                      minutes: 2
+                    timeout:
+                      minutes: 1
+                    initialDelay:
+                      seconds: 15
 
       # ── RBAC Admin Console (dist, no hash needed) ─────────────────────────
       - package: "./dynamic-plugins/dist/backstage-community-plugin-rbac"
