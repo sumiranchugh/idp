@@ -1,12 +1,13 @@
 apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
-  name: request-rhel-vm-servicenow
-  title: Request RHEL VM (With Approval)
+  name: provision-nginx-rhel-vm
+  title: Provision NGINX on RHEL VM
   description: |
-    Submit a self-service request to provision a RHEL virtual machine.
-    Your request will be sent to ServiceNow for manager approval.
-    Once approved, Ansible Automation Platform will automatically provision the VM.
+    Self-service provisioning of a RHEL virtual machine with NGINX application stack.
+    Your request goes through ServiceNow for manager approval.
+    Once approved, Ansible Automation Platform automatically provisions the VM,
+    deploys NGINX, and creates a dedicated service account with SSH access.
   tags:
     - vm
     - rhel
