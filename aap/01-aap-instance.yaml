@@ -1,0 +1,17 @@
+---
+# Ansible Automation Platform — controller-only deployment
+# Hub, EDA, and Lightspeed disabled to minimize resource usage
+apiVersion: aap.ansible.com/v1alpha1
+kind: AnsibleAutomationPlatform
+metadata:
+  name: aap-platform
+  namespace: aap
+spec:
+  controller:
+    disabled: false
+  hub:
+    disabled: true
+  eda:
+    disabled: true
+  lightspeed:
+    disabled: true

@@ -188,6 +188,8 @@ data:
           development:
             baseUrl: ${AAP_BASE_URL}
             authorization: "Bearer ${AAP_TOKEN}"
+            orgs:
+              - Default
             sync:
               jobTemplates:
                 enabled: true
