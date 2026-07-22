@@ -153,11 +153,10 @@ spec:
   output:
     links:
       - title: View AAP Job
-        url: https://aap-platform-ansible-automation-platform.apps.cluster-k5zwd.dyn.redhatworkshops.io/#/jobs/playbook/${{ steps['trigger-aap'].output.body.id }}/details
-        icon: dashboard
+        url: __AAP_BASE_URL__/#/jobs/playbook/${{ steps['trigger-aap'].output.body.id }}/details
         icon: dashboard
       - title: View VM in OpenShift
-        url: https://console-openshift-console.apps.cluster-k5zwd.dyn.redhatworkshops.io/k8s/ns/${{ parameters.vm_namespace }}/kubevirt.io~v1~VirtualMachine/${{ parameters.vm_name }}
+        url: https://console-openshift-console.__CLUSTER_DOMAIN__/k8s/ns/${{ parameters.vm_namespace }}/kubevirt.io~v1~VirtualMachine/${{ parameters.vm_name }}
         icon: dashboard
     text:
       - title: VM Provisioning Started

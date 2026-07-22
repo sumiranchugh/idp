@@ -46,16 +46,18 @@ substitute() {
     -e "s|__RHDH_SUPERADMIN__|${RHDH_SUPERADMIN}|g" \
     -e "s|__GITHUB_REPO_BASE__|${GITHUB_REPO_BASE}|g" \
     -e "s|__STORAGE_CLASS__|${STORAGE_CLASS}|g" \
+    -e "s|__SN_BASE_URL__|${SN_BASE_URL}|g" \
+    -e "s|__AAP_BASE_URL__|${AAP_BASE_URL}|g" \
     "$src" > "$dst"
 }
 
-mkdir -p "$TMPDIR/devhub" "$TMPDIR/workflows"
+mkdir -p "$TMPDIR/devhub" "$TMPDIR/workflows" "$TMPDIR/templates" "$TMPDIR/catalog"
 
-for f in devhub/*.yaml; do
-  substitute "$SCRIPT_DIR/$f" "$TMPDIR/$f"
-done
-for f in workflows/*.yaml; do
-  substitute "$SCRIPT_DIR/$f" "$TMPDIR/$f"
+for dir in devhub workflows templates catalog; do
+  for f in "$dir"/*.yaml; do
+    [[ -f "$SCRIPT_DIR/$f" ]] || continue
+    substitute "$SCRIPT_DIR/$f" "$TMPDIR/$f"
+  done
 done
 
 # ── Ensure namespace exists ───────────────────────────────────────────────────

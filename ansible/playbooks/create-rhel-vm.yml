@@ -185,32 +185,169 @@
                 targetPort: 22
                 protocol: TCP
 
-    - name: Create Route for SSH access (optional)
+    - name: Create HTTP Service for NGINX app
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: "{{ vm_name }}-http"
+            namespace: "{{ vm_namespace }}"
+            labels:
+              app: "{{ vm_name }}"
+              backstage.io/kubernetes-id: rhel-vm-provisioning
+          spec:
+            type: ClusterIP
+            selector:
+              kubevirt.io/vm: "{{ vm_name }}"
+            ports:
+              - name: http
+                port: 80
+                targetPort: 80
+                protocol: TCP
+
+    - name: Create Route for NGINX app
       kubernetes.core.k8s:
         state: present
         definition:
           apiVersion: route.openshift.io/v1
           kind: Route
           metadata:
-            name: "{{ vm_name }}-ssh"
+            name: "{{ vm_name }}"
             namespace: "{{ vm_namespace }}"
             labels:
               app: "{{ vm_name }}"
+              backstage.io/kubernetes-id: rhel-vm-provisioning
           spec:
             to:
               kind: Service
-              name: "{{ vm_name }}-ssh"
+              name: "{{ vm_name }}-http"
             port:
-              targetPort: ssh
+              targetPort: http
             tls:
-              termination: passthrough
-      when: expose_ssh_route | default(false) | bool
+              termination: edge
+              insecureEdgeTerminationPolicy: Allow
+
+    - name: Derive service account name
+      set_fact:
+        service_account_user: "svc_{{ vm_name | regex_replace('-', '_') }}"
+        vm_ssh_host: "{{ vm_name }}-ssh.{{ vm_namespace }}.svc.cluster.local"
+
+    - name: Wait for SSH to become reachable
+      ansible.builtin.wait_for:
+        host: "{{ vm_ssh_host }}"
+        port: 22
+        timeout: 300
+        delay: 10
+
+    - name: Add VM to in-memory inventory
+      ansible.builtin.add_host:
+        name: "{{ vm_name }}"
+        ansible_host: "{{ vm_ssh_host }}"
+        ansible_user: "{{ vm_user }}"
+        ansible_ssh_pass: "{{ vm_password }}"
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+        groups: provisioned_vms
+        vm_name: "{{ vm_name }}"
+        vm_namespace: "{{ vm_namespace }}"
+        vm_user: "{{ vm_user }}"
+        service_account_user: "{{ service_account_user }}"
+        ssh_public_key: "{{ ssh_public_key }}"
+
+# ── Play 2: Configure application stack on the VM via SSH ──────────────────
+- name: Configure RHEL Application Stack
+  hosts: provisioned_vms
+  gather_facts: true
+  become: true
+
+  tasks:
+    - name: Install NGINX
+      ansible.builtin.dnf:
+        name: nginx
+        state: present
+
+    - name: Deploy custom index.html
+      ansible.builtin.copy:
+        dest: /usr/share/nginx/html/index.html
+        mode: "0644"
+        content: |
+          <!DOCTYPE html>
+          <html>
+          <head><title>{{ vm_name }}</title>
+          <style>
+            body { font-family: 'Red Hat Display', sans-serif; background: #151515; color: #e0e0e0; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+            .card { background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 40px; max-width: 600px; text-align: center; }
+            h1 { color: #ee0000; } h2 { color: #06c; }
+            table { margin: 20px auto; border-collapse: collapse; text-align: left; }
+            td, th { padding: 8px 16px; border-bottom: 1px solid #333; }
+            .badge { background: #1e4620; color: #4caf50; padding: 4px 12px; border-radius: 12px; font-size: 14px; }
+          </style></head>
+          <body><div class="card">
+            <h1>Welcome to {{ vm_name }}!</h1>
+            <h2>Provisioned via RHDH &amp; OpenShift Virtualization</h2>
+            <p><span class="badge">&#x2714; Healthy</span></p>
+            <table>
+              <tr><th>Host</th><td>{{ vm_name }}.{{ vm_namespace }}.svc.cluster.local</td></tr>
+              <tr><th>Service Account</th><td>{{ service_account_user }}</td></tr>
+              <tr><th>OS</th><td>RHEL {{ ansible_distribution_major_version | default('9') }}</td></tr>
+              <tr><th>Platform</th><td>Red Hat Developer Hub + AAP</td></tr>
+            </table>
+          </div></body></html>
+
+    - name: Start and enable NGINX
+      ansible.builtin.systemd:
+        name: nginx
+        state: started
+        enabled: true
+
+    - name: Open firewall for HTTP
+      ansible.posix.firewalld:
+        service: http
+        permanent: true
+        immediate: true
+        state: enabled
+      ignore_errors: true
+
+    - name: Create service account user
+      ansible.builtin.user:
+        name: "{{ service_account_user }}"
+        comment: "Service account for {{ vm_name }}"
+        shell: /bin/bash
+        create_home: true
+
+    - name: Grant limited sudo
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/{{ service_account_user }}"
+        mode: "0440"
+        content: |
+          {{ service_account_user }} ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart nginx, /usr/bin/systemctl status nginx, /usr/bin/journalctl -u nginx*
+        validate: /usr/sbin/visudo -cf %s
+
+    - name: Inject SSH public key for service account
+      ansible.posix.authorized_key:
+        user: "{{ service_account_user }}"
+        key: "{{ ssh_public_key }}"
+        state: present
+      when: ssh_public_key is defined and ssh_public_key | length > 0
+
+# ── Play 3: Collect results and notify SonataFlow ──────────────────────────
+- name: Finalize and notify
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Build app route URL
+      set_fact:
+        app_route: "{{ vm_name }}-{{ vm_namespace }}.{{ lookup('env', 'CLUSTER_DOMAIN') | default('apps.example.com', true) }}"
+        vm_ssh_host: "{{ vm_name }}-ssh.{{ vm_namespace }}.svc.cluster.local"
+        service_account_user: "svc_{{ vm_name | regex_replace('-', '_') }}"
 
     - name: Output VM details
       ansible.builtin.debug:
         msg:
           - "================================================"
-          - "VM Created Successfully!"
+          - "Application Stack Provisioned Successfully!"
           - "================================================"
           - "VM Name: {{ vm_name }}"
           - "Namespace: {{ vm_namespace }}"
@@ -218,16 +355,14 @@
           - "Memory: {{ vm_memory }}"
           - "Disk Size: {{ vm_disk_size }}"
           - "RHEL Version: {{ rhel_version }}"
-          - "Status: {{ vm_status.resources[0].status.printableStatus | default('Starting') }}"
-          - "Ready: {{ vm_status.resources[0].status.ready | default(false) }}"
           - ""
-          - "Access Information:"
-          - "  Username: {{ vm_user }}"
-          - "  Password: {{ vm_password }}"
-          - "  SSH Service: {{ vm_name }}-ssh.{{ vm_namespace }}.svc.cluster.local"
+          - "Application:"
+          - "  URL: https://{{ app_route }}"
+          - "  Status: Healthy"
           - ""
-          - "Connect from inside cluster:"
-          - "  ssh {{ vm_user }}@{{ vm_name }}-ssh.{{ vm_namespace }}.svc.cluster.local"
+          - "Access:"
+          - "  Service Account: {{ service_account_user }}"
+          - "  SSH: ssh {{ service_account_user }}@{{ vm_ssh_host }}"
           - "================================================"
 
     - name: Set stats for AAP/Developer Hub
@@ -239,13 +374,12 @@
           vm_memory: "{{ vm_memory }}"
           vm_disk_size: "{{ vm_disk_size }}"
           rhel_version: "{{ rhel_version }}"
-          vm_ready: "{{ vm_status.resources[0].status.ready | default(false) }}"
-          vm_status: "{{ vm_status.resources[0].status.printableStatus | default('Unknown') }}"
-          ssh_service: "{{ vm_name }}-ssh.{{ vm_namespace }}.svc.cluster.local"
+          vm_ready: true
+          vm_status: Running
+          ssh_service: "{{ vm_ssh_host }}"
+          service_account: "{{ service_account_user }}"
+          app_url: "https://{{ app_route }}"
 
-    # ── Notify SonataFlow workflow that provisioning is complete ─────────
-    # SN incident resolution and CR closure are handled by the SonataFlow
-    # workflow after it receives this callback — not by the playbook.
     - name: Notify SonataFlow workflow of VM provisioning completion
       uri:
         url: "{{ workflow_callback_url }}"
@@ -262,8 +396,10 @@
           vm_provisioned: true
           vm_name: "{{ vm_name }}"
           vm_namespace: "{{ vm_namespace }}"
-          vm_status: "{{ vm_status.resources[0].status.printableStatus | default('Running') }}"
-          ssh_service: "{{ vm_name }}-ssh.{{ vm_namespace }}.svc.cluster.local"
+          vm_status: Running
+          ssh_service: "{{ vm_ssh_host }}"
+          service_account: "{{ service_account_user }}"
+          app_url: "https://{{ app_route }}"
         validate_certs: false
         status_code: [200, 201, 202, 204]
       when: workflow_callback_url is defined and workflow_callback_url | length > 0
