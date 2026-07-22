@@ -133,7 +133,7 @@ data:
       # Frontend — Ansible sidebar page, learning paths, catalog views
       # Requires rhdh-pull-secret with registry.redhat.io credentials
       - package: "oci://registry.redhat.io/ansible-automation-platform/automation-portal:2.1!ansible-plugin-backstage-rhaap"
-        disabled: true
+        disabled: false
         pluginConfig:
           dynamicPlugins:
             frontend:
@@ -150,11 +150,11 @@ data:
 
       # Backend — AAP catalog provider, syncs job templates as Resources
       - package: "oci://registry.redhat.io/ansible-automation-platform/automation-portal:2.1!ansible-plugin-backstage-rhaap-backend"
-        disabled: true
+        disabled: false
 
       # Scaffolder actions — rhaap:* actions for launching AAP jobs from templates
       - package: "oci://registry.redhat.io/ansible-automation-platform/automation-portal:2.1!ansible-plugin-scaffolder-backend-module-backstage-rhaap"
-        disabled: true
+        disabled: false
 
       # ── Keycloak Catalog Sync (dist, no hash needed) ─────────────────────
       - package: "./dynamic-plugins/dist/backstage-community-plugin-catalog-backend-module-keycloak-dynamic"
