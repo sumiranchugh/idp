@@ -251,8 +251,8 @@ spec:
           sn_incident_number: ${{ steps['create-sn-incident'].output.result.number }}
           sncrsysid: ${{ steps['create-sn-cr'].output.result.sys_id }}
           sn_cr_number: ${{ steps['create-sn-cr'].output.result.number }}
-          sn_cr_url: "__SN_BASE_URL__/change_request.do?sys_id=${{ steps['create-sn-cr'].output.result.sys_id }}"
-          sn_incident_url: "__SN_BASE_URL__/incident.do?sys_id=${{ steps['create-sn-incident'].output.result.sys_id }}"
+          sn_cr_url: ""
+          sn_incident_url: ""
 
     # Step 5 removed — the workflow's callback action now stores the instance ID
     # and callback URL in the SN CR via REST call through RHDH proxy.
@@ -262,11 +262,8 @@ spec:
       - title: Track Workflow in Orchestrator
         url: ${{ steps['start-workflow'].output.instanceUrl }}
         icon: dashboard
-      - title: Approve in ServiceNow (Change Request)
-        url: __SN_BASE_URL__/change_request.do?sys_id=${{ steps['create-sn-cr'].output.result.sys_id }}
-        icon: dashboard
-      - title: View Incident in RHDH Catalog
-        url: https://__RHDH_ROUTE__/catalog/default/component/rhel-vm-provisioning
+      - title: View VM Infrastructure
+        url: /catalog/default/component/rhel-vm-provisioning
         icon: catalog
     text:
       - title: Request Submitted for Approval

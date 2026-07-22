@@ -28,25 +28,6 @@ metadata:
     - openshift-virtualization
     - ansible
     - servicenow
-  links:
-    - url: __AAP_BASE_URL__
-      title: Ansible Automation Platform
-      icon: dashboard
-    - url: __AAP_BASE_URL__/#/jobs
-      title: AAP — Job Runs
-      icon: dashboard
-    - url: __AAP_BASE_URL__/#/templates
-      title: AAP — Job Templates
-      icon: dashboard
-    - url: "__SN_BASE_URL__/change_request_list.do?sysparm_query=u_backstage_entity_idSTARTSWITHrhel-vm-provisioning^ORu_backstage_entity_id=rhel-vm-provisioning&sysparm_view=&sysparm_limit=20"
-      title: ServiceNow — VM Change Requests
-      icon: dashboard
-    - url: __SN_BASE_URL__/sp
-      title: ServiceNow Service Portal
-      icon: dashboard
-    - url: https://__RHDH_ROUTE__/orchestrator
-      title: Orchestrator — VM Workflows
-      icon: dashboard
 spec:
   type: service
   lifecycle: production

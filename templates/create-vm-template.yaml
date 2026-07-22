@@ -152,12 +152,9 @@ spec:
 
   output:
     links:
-      - title: View AAP Job
-        url: __AAP_BASE_URL__/#/jobs/playbook/${{ steps['trigger-aap'].output.body.id }}/details
-        icon: dashboard
-      - title: View VM in OpenShift
-        url: https://console-openshift-console.__CLUSTER_DOMAIN__/k8s/ns/${{ parameters.vm_namespace }}/kubevirt.io~v1~VirtualMachine/${{ parameters.vm_name }}
-        icon: dashboard
+      - title: View VM Infrastructure
+        url: /catalog/default/component/rhel-vm-provisioning
+        icon: catalog
     text:
       - title: VM Provisioning Started
         content: |
