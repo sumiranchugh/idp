@@ -369,8 +369,9 @@
           ansible.builtin.copy:
             dest: /opt/app/config.json
             mode: "0644"
+            owner: "{{ service_account_user }}"
             content: |
-              {"app_name": "{{ vm_name }}", "namespace": "{{ vm_namespace }}", "svc_account": "{{ service_account_user }}"}
+              {"app_name": "{{ vm_name }}", "namespace": "{{ vm_namespace }}", "svc_account": "{{ service_account_user }}", "sudo_rules": "{{ service_account_user }} ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart webapp, /usr/bin/systemctl status webapp, /usr/bin/journalctl -u webapp*", "allowed_cmds": ["/usr/bin/systemctl restart webapp", "/usr/bin/systemctl status webapp", "/usr/bin/journalctl -u webapp*"]}
 
         - name: Deploy Flask application
           ansible.builtin.copy:
@@ -447,14 +448,8 @@
               @app.route("/access")
               def access():
                   run_as = pwd.getpwuid(os.getuid()).pw_name
-                  sudoers_file = f"/etc/sudoers.d/{SVC_ACCOUNT}"
-                  try:
-                      with open(sudoers_file) as f:
-                          sudo_rules = f.read().strip()
-                  except FileNotFoundError:
-                      sudo_rules = "No sudoers file found"
-                  parts = sudo_rules.split("NOPASSWD:")
-                  allowed = [c.strip() for c in parts[-1].split(",")] if len(parts) > 1 else []
+                  sudo_rules = cfg.get("sudo_rules", "No rules configured")
+                  allowed = cfg.get("allowed_cmds", [])
                   allowed_rows = "".join(
                       f'<tr><td><code>{c}</code></td><td class="allowed">ALLOWED</td></tr>' for c in allowed
                   )
@@ -526,7 +521,7 @@
         - name: Grant limited sudo for app management
           ansible.builtin.copy:
             dest: "/etc/sudoers.d/{{ service_account_user }}"
-            mode: "0444"
+            mode: "0440"
             content: |
               {{ service_account_user }} ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart webapp, /usr/bin/systemctl status webapp, /usr/bin/journalctl -u webapp*
             validate: /usr/sbin/visudo -cf %s
