@@ -11,7 +11,6 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: demo-app
     backstage.io/kubernetes-namespace: vms
-    orchestrator.backstage.io/workflow-id: vm-provisioning-approval
     servicenow.com/entity-id: demo-app
   links:
     - url: https://demo-app-vms.apps.cluster-z5jjn.dyn.redhatworkshops.io
