@@ -32,7 +32,8 @@ data:
     p, role:default/admin, orchestrator.workflowAdminView, read, allow
     p, role:default/admin, orchestrator.instanceAdminView, read, allow
 
-    # ── Developer role — scaffolder + orchestrator (no blanket catalog read) ─
+    # ── Developer role — catalog + scaffolder + orchestrator ─────────────────
+    p, role:default/developer, catalog-entity, read, allow
     p, role:default/developer, scaffolder-template, read, allow
     p, role:default/developer, scaffolder-template, use, allow
     p, role:default/developer, scaffolder-action, use, allow
@@ -45,8 +46,10 @@ data:
     # ── Kubernetes + Topology permissions ────────────────────────────────────────────
     p, role:default/admin, kubernetes.clusters.read, read, allow
     p, role:default/admin, kubernetes.resources.read, read, allow
+    p, role:default/admin, kubernetes.proxy, use, allow
     p, role:default/developer, kubernetes.clusters.read, read, allow
     p, role:default/developer, kubernetes.resources.read, read, allow
+    p, role:default/developer, kubernetes.proxy, use, allow
     p, role:default/admin, topology.view.read, read, allow
     p, role:default/developer, topology.view.read, read, allow
 
@@ -60,3 +63,4 @@ data:
     g, user:default/__RHDH_SUPERADMIN__, role:default/rbac_admin
     g, user:default/__RHDH_SUPERADMIN__, role:default/admin
     g, user:default/user1, role:default/developer
+    g, user:default/user2, role:default/developer
