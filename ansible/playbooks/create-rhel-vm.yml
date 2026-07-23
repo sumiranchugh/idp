@@ -117,14 +117,12 @@
                         {% endif %}
                         ssh_pwauth: true
                         disable_root: false
-                        package_update: true
+                        package_update: false
                         package_upgrade: false
                         packages:
-                          - vim
-                          - git
-                          - curl
-                          - wget
-                          - net-tools
+                          - nginx
+                        runcmd:
+                          - systemctl enable --now nginx
                         timezone: UTC
                         hostname: {{ vm_name }}
                         fqdn: {{ vm_name }}.{{ vm_namespace }}.svc.cluster.local
@@ -234,26 +232,41 @@
         service_account_user: "svc_{{ vm_name | regex_replace('-', '_') }}"
         vm_ssh_host: "{{ vm_name }}-ssh.{{ vm_namespace }}.svc.cluster.local"
 
-    - name: Wait for SSH to become reachable
-      ansible.builtin.wait_for:
-        host: "{{ vm_ssh_host }}"
-        port: 22
-        timeout: 300
-        delay: 10
+    - name: Wait for SSH and register VM host
+      block:
+        - name: Wait for SSH to become reachable
+          ansible.builtin.wait_for:
+            host: "{{ vm_ssh_host }}"
+            port: 22
+            timeout: 300
+            delay: 10
 
-    - name: Add VM to in-memory inventory
-      ansible.builtin.add_host:
-        name: "{{ vm_name }}"
-        ansible_host: "{{ vm_ssh_host }}"
-        ansible_user: "{{ vm_user }}"
-        ansible_ssh_pass: "{{ vm_password }}"
-        ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-        groups: provisioned_vms
-        vm_name: "{{ vm_name }}"
-        vm_namespace: "{{ vm_namespace }}"
-        vm_user: "{{ vm_user }}"
-        service_account_user: "{{ service_account_user }}"
-        ssh_public_key: "{{ ssh_public_key }}"
+        - name: Add VM to in-memory inventory
+          ansible.builtin.add_host:
+            name: "{{ vm_name }}"
+            ansible_host: "{{ vm_ssh_host }}"
+            ansible_user: "{{ vm_user }}"
+            ansible_ssh_pass: "{{ vm_password }}"
+            ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+            groups: provisioned_vms
+            vm_name: "{{ vm_name }}"
+            vm_namespace: "{{ vm_namespace }}"
+            vm_user: "{{ vm_user }}"
+            service_account_user: "{{ service_account_user }}"
+            ssh_public_key: "{{ ssh_public_key }}"
+
+        - name: Mark SSH as reachable
+          set_fact:
+            ssh_reachable: true
+
+      rescue:
+        - name: SSH not reachable — VM created but app stack will be skipped
+          ansible.builtin.debug:
+            msg: "SSH wait timed out for {{ vm_ssh_host }}. VM is created but NGINX setup will be skipped. Callback will still fire."
+
+        - name: Mark SSH as unreachable
+          set_fact:
+            ssh_reachable: false
 
 # ── Play 2: Configure application stack on the VM via SSH ──────────────────
 - name: Configure RHEL Application Stack
