@@ -14,8 +14,8 @@ metadata:
     ServiceNow approval workflows, and Ansible Automation Platform.
   annotations:
     backstage.io/managed-by-location: url:https://github.com/sumiranchugh/idp/blob/main/catalog/vm-infrastructure.yaml
-    # ServiceNow tab — only shows incidents where u_backstage_entity_id=rhel-vm-provisioning
-    servicenow.com/entity-id: rhel-vm-provisioning
+    # ServiceNow tab — shows ALL incidents with a backstage entity ID (aggregates all VMs)
+    servicenow.com/entity-id: "rhel-vm-provisioning^ORu_backstage_entity_idISNOTEMPTY"
     # Links entity to the Orchestrator workflow tab (shows Workflows tab)
     orchestrator.backstage.io/workflow-id: vm-provisioning-approval
     # Kubernetes/Topology tab — shows ALL VMs provisioned by this service
