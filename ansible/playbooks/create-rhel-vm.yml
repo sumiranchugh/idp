@@ -52,7 +52,7 @@
             labels:
               app: "{{ vm_name }}"
               os: "rhel{{ rhel_version }}"
-              kubevirt.io/vm: "{{ vm_name }}"
+              vm.kubevirt.io/name: "{{ vm_name }}"
               # Backstage Kubernetes plugin label — links this VM to the rhel-vm-provisioning component
               backstage.io/kubernetes-id: rhel-vm-provisioning
           spec:
@@ -176,7 +176,7 @@
           spec:
             type: ClusterIP
             selector:
-              kubevirt.io/vm: "{{ vm_name }}"
+              vm.kubevirt.io/name: "{{ vm_name }}"
             ports:
               - name: ssh
                 port: 22
@@ -198,7 +198,7 @@
           spec:
             type: ClusterIP
             selector:
-              kubevirt.io/vm: "{{ vm_name }}"
+              vm.kubevirt.io/name: "{{ vm_name }}"
             ports:
               - name: http
                 port: 80
