@@ -296,26 +296,40 @@ done
 ROUTE_URL=$(oc get route backstage-developer-hub -n "$RHDH_NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || true)
 
 # ── RBAC conditional policy: developer sees only owned entities + shared kinds ─
-# NOTE: Conditional policies live in the DB only (not CSV). They are cleared
-# on pod restart, so this section must run after the pod is ready. If the pod
-# is manually restarted, re-run this script or re-insert via psql.
-echo "==> Applying RBAC conditional policy for developer role..."
-PSQL_POD=$(oc get pod -n "$RHDH_NAMESPACE" -l postgres-operator.crunchydata.com/role=master -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || \
-           oc get pod -n "$RHDH_NAMESPACE" -l statefulset.kubernetes.io/pod-name=backstage-psql-${RHDH_NAMESPACE}-0 -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || \
-           echo "backstage-psql-${RHDH_NAMESPACE}-0")
-
-oc exec "$PSQL_POD" -n "$RHDH_NAMESPACE" -- psql -U postgres -d backstage_plugin_permission -c "
-DELETE FROM \"role-condition-policies\" WHERE \"roleEntityRef\" = 'role:default/developer' AND \"pluginId\" = 'catalog';
-INSERT INTO \"role-condition-policies\" (\"roleEntityRef\", \"result\", \"pluginId\", \"resourceType\", \"permissions\", \"conditionsJson\")
-VALUES (
-  'role:default/developer',
-  'CONDITIONAL',
-  'catalog',
-  'catalog-entity',
-  '[\"read\"]',
-  '{\"anyOf\":[{\"rule\":\"IS_ENTITY_OWNER\",\"resourceType\":\"catalog-entity\",\"params\":{\"claims\":[\"user:default/user1\",\"group:default/application-team\"]}},{\"rule\":\"IS_ENTITY_KIND\",\"resourceType\":\"catalog-entity\",\"params\":{\"kinds\":[\"template\",\"system\",\"group\",\"user\",\"location\",\"api\",\"resource\"]}}]}'
-);
-" 2>/dev/null && echo "    Conditional policy applied." || echo "    WARNING: Could not apply conditional policy. Apply manually via RBAC admin UI."
+# NOTE: Conditional policies must be created via the RBAC REST API (not direct DB
+# insertion). The REST API requires a user-type Bearer token obtained from the
+# browser Network tab (search for "query?term=" after logging into RHDH as admin).
+#
+# After deployment, create the conditional policy by running:
+#   curl -sk -X POST \
+#     -H "Content-Type: application/json" \
+#     -H "Authorization: Bearer <ADMIN_USER_TOKEN>" \
+#     "https://${RHDH_ROUTE}/api/permission/roles/conditions" \
+#     -d '{
+#       "result": "CONDITIONAL",
+#       "roleEntityRef": "role:default/developer",
+#       "pluginId": "catalog",
+#       "resourceType": "catalog-entity",
+#       "permissionMapping": ["read"],
+#       "conditions": {
+#         "anyOf": [
+#           {
+#             "rule": "IS_ENTITY_OWNER",
+#             "resourceType": "catalog-entity",
+#             "params": { "claims": ["$ownerRefs"] }
+#           },
+#           {
+#             "rule": "IS_ENTITY_KIND",
+#             "resourceType": "catalog-entity",
+#             "params": { "kinds": ["Template","System","Group","User","Location","API","Resource"] }
+#           }
+#         ]
+#       }
+#     }'
+#
+# Or create it via the RHDH Web UI: Administration > RBAC > Edit developer role > Add condition
+echo "==> RBAC conditional policy for developer role must be created via REST API or Web UI."
+echo "    See deploy.sh comments for the curl command."
 
 # ── Configure AAP resources ──────────────────────────────────────────────────
 if [[ -n "${AAP_BASE_URL:-}" && "${AAP_BASE_URL}" != *"placeholder"* ]]; then
