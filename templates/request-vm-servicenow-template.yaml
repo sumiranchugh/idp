@@ -1,13 +1,13 @@
 apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
-  name: provision-nginx-rhel-vm
-  title: Provision NGINX on RHEL VM
+  name: run-flask-app-on-rhel
+  title: Run Flask App on RHEL VM
   description: |
-    Self-service provisioning of a RHEL virtual machine with NGINX application stack.
+    Self-service provisioning of a RHEL virtual machine with a Flask web application.
     Your request goes through ServiceNow for manager approval.
-    Once approved, Ansible Automation Platform automatically provisions the VM,
-    deploys NGINX, and creates a dedicated service account with SSH access.
+    Once approved, Ansible Automation Platform provisions the VM, installs Flask
+    from PyPI, deploys the app, and creates a dedicated service account with SSH access.
   tags:
     - vm
     - rhel
@@ -150,7 +150,7 @@ spec:
       input:
         tableName: incident
         requestBody:
-          short_description: "VM Request: ${{ parameters.vm_name }} (RHEL ${{ parameters.rhel_version }})"
+          short_description: "Flask App on RHEL: ${{ parameters.vm_name }} (RHEL ${{ parameters.rhel_version }})"
           description: |
             VM Provisioning Request from Red Hat Developer Hub
 
@@ -183,7 +183,7 @@ spec:
       input:
         tableName: change_request
         requestBody:
-          short_description: "VM Request: ${{ parameters.vm_name }} (RHEL ${{ parameters.rhel_version }})"
+          short_description: "Flask App on RHEL: ${{ parameters.vm_name }} (RHEL ${{ parameters.rhel_version }})"
           description: |
             VM Provisioning Request — approve to trigger automated provisioning.
 
