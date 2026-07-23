@@ -140,6 +140,8 @@ data:
           changeOrigin: true
           secure: false
           allowedMethods: ['GET', 'POST']
+          pathRewrite:
+            /api/controller/v2/job_templates/9/: /api/controller/v2/job_templates/__AAP_JOB_TEMPLATE_ID__/
           headers:
             Authorization: Bearer ${AAP_TOKEN}
         # GitHub API proxy — used by scaffolder to create catalog entity Gists

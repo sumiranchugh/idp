@@ -197,6 +197,7 @@ spec:
 
             Linked Incident: ${{ steps['create-sn-incident'].output.result.number }}
             Justification: ${{ parameters.justification }}
+          justification: ${{ parameters.justification }}
           type: normal
           category: Other
           priority: "4"
