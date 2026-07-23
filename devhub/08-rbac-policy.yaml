@@ -32,8 +32,9 @@ data:
     p, role:default/admin, orchestrator.workflowAdminView, read, allow
     p, role:default/admin, orchestrator.instanceAdminView, read, allow
 
-    # ── Developer role — catalog + scaffolder + orchestrator ─────────────────
-    p, role:default/developer, catalog-entity, read, allow
+    # ── Developer role — catalog (conditional) + scaffolder + orchestrator ──
+    # catalog-entity read is conditional — see RBAC API condition below
+    # Developers see only entities owned by their group + shared kinds (Template, System, etc.)
     p, role:default/developer, scaffolder-template, read, allow
     p, role:default/developer, scaffolder-template, use, allow
     p, role:default/developer, scaffolder-action, use, allow
