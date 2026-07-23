@@ -12,6 +12,7 @@ metadata:
     backstage.io/kubernetes-id: e2e-test
     backstage.io/kubernetes-namespace: vms
     orchestrator.backstage.io/workflow-id: vm-provisioning-approval
+    servicenow.com/entity-id: e2e-test
   links:
     - url: https://e2e-test-vms.apps.cluster-z5jjn.dyn.redhatworkshops.io
       title: Application
