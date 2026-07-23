@@ -1,0 +1,36 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: demo-app
+  namespace: default
+  title: "RHEL VM: demo-app"
+  description: |
+    RHEL 9 VM provisioned via Developer Hub.
+    App URL: https://demo-app-vms.apps.cluster-z5jjn.dyn.redhatworkshops.io
+    SSH: demo-app-ssh.vms.svc.cluster.local
+  annotations:
+    backstage.io/kubernetes-id: demo-app
+    backstage.io/kubernetes-namespace: vms
+    orchestrator.backstage.io/workflow-id: vm-provisioning-approval
+    servicenow.com/entity-id: demo-app
+  links:
+    - url: https://demo-app-vms.apps.cluster-z5jjn.dyn.redhatworkshops.io
+      title: Application
+      icon: dashboard
+    - url: https://demo-app-vms.apps.cluster-z5jjn.dyn.redhatworkshops.io/access
+      title: Access Control
+      icon: security
+    - url: https://demo-app-vms.apps.cluster-z5jjn.dyn.redhatworkshops.io/health
+      title: Health Check
+      icon: healing
+  tags:
+    - vm
+    - rhel
+    - flask
+spec:
+  type: vm
+  lifecycle: production
+  owner: "group:default/application-team"
+  system: openshift-virtualization
+  dependsOn:
+    - component:default/rhel-vm-provisioning
