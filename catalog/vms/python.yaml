@@ -1,0 +1,36 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: python
+  namespace: default
+  title: "RHEL VM: python"
+  description: |
+    RHEL 9 VM provisioned via Developer Hub.
+    App URL: https://python-vms.apps.cluster-z5jjn.dyn.redhatworkshops.io
+    SSH: python-ssh.vms.svc.cluster.local
+  annotations:
+    backstage.io/kubernetes-id: python
+    backstage.io/kubernetes-namespace: vms
+    orchestrator.backstage.io/workflow-id: vm-provisioning-approval
+    servicenow.com/entity-id: python
+  links:
+    - url: https://python-vms.apps.cluster-z5jjn.dyn.redhatworkshops.io
+      title: Application
+      icon: dashboard
+    - url: https://python-vms.apps.cluster-z5jjn.dyn.redhatworkshops.io/access
+      title: Access Control
+      icon: security
+    - url: https://python-vms.apps.cluster-z5jjn.dyn.redhatworkshops.io/health
+      title: Health Check
+      icon: healing
+  tags:
+    - vm
+    - rhel
+    - flask
+spec:
+  type: vm
+  lifecycle: production
+  owner: "group:default/application-team"
+  system: openshift-virtualization
+  dependsOn:
+    - component:default/rhel-vm-provisioning
