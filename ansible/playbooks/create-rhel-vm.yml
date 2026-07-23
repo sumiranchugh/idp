@@ -75,6 +75,7 @@
                 labels:
                   kubevirt.io/domain: "{{ vm_name }}"
                   app: "{{ vm_name }}"
+                  backstage.io/kubernetes-id: "{{ vm_name }}"
               spec:
                 domain:
                   cpu:
