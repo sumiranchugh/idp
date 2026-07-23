@@ -356,37 +356,53 @@
           ansible.builtin.command:
             cmd: python3 -m pip install flask
 
+        - name: Write application config (Ansible variables)
+          ansible.builtin.copy:
+            dest: /opt/app/config.json
+            mode: "0644"
+            content: |
+              {"app_name": "{{ vm_name }}", "namespace": "{{ vm_namespace }}", "svc_account": "{{ service_account_user }}"}
+
         - name: Deploy Flask application
           ansible.builtin.copy:
             dest: /opt/app/app.py
             mode: "0644"
-            content: |
+            content: !unsafe |
               from flask import Flask, jsonify
-              import socket, platform, datetime, os
+              import socket, platform, datetime, os, json
+
+              with open("/opt/app/config.json") as f:
+                  cfg = json.load(f)
+
+              APP_NAME = cfg["app_name"]
+              NAMESPACE = cfg["namespace"]
+              SVC_ACCOUNT = cfg["svc_account"]
 
               app = Flask(__name__)
 
-              APP_NAME = "{{ vm_name }}"
-              NAMESPACE = "{{ vm_namespace }}"
-              SVC_ACCOUNT = "{{ service_account_user }}"
+              STYLE = """
+              body { font-family: 'Red Hat Display', sans-serif; background: #151515; color: #e0e0e0;
+                     display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+              .card { background: #1e1e1e; border: 1px solid #333; border-radius: 8px;
+                      padding: 40px; max-width: 640px; text-align: center; }
+              h1 { color: #ee0000; } h2 { color: #06c; }
+              table { margin: 20px auto; border-collapse: collapse; text-align: left; }
+              td, th { padding: 8px 16px; border-bottom: 1px solid #333; }
+              .badge { background: #1e4620; color: #4caf50; padding: 4px 12px;
+                       border-radius: 12px; font-size: 14px; }
+              .allowed { color: #4caf50; } .denied { color: #ef5350; }
+              code { background: #2a2a2a; padding: 2px 8px; border-radius: 4px; font-size: 14px; }
+              .rule-box { background: #0d1117; border: 1px solid #333; border-radius: 6px;
+                          padding: 16px; font-family: monospace; font-size: 13px; margin: 16px 0;
+                          white-space: pre-wrap; }
+              """
 
               @app.route("/")
               def index():
                   uptime = os.popen("uptime -p").read().strip()
-                  return f"""<!DOCTYPE html>
-              <html>
-              <head><title>{APP_NAME}</title>
-              <style>
-                body {{ font-family: 'Red Hat Display', sans-serif; background: #151515; color: #e0e0e0;
-                       display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }}
-                .card {{ background: #1e1e1e; border: 1px solid #333; border-radius: 8px;
-                        padding: 40px; max-width: 640px; text-align: center; }}
-                h1 {{ color: #ee0000; }} h2 {{ color: #06c; }}
-                table {{ margin: 20px auto; border-collapse: collapse; text-align: left; }}
-                td, th {{ padding: 8px 16px; border-bottom: 1px solid #333; }}
-                .badge {{ background: #1e4620; color: #4caf50; padding: 4px 12px;
-                         border-radius: 12px; font-size: 14px; }}
-              </style></head>
+                  now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                  return f"""<!DOCTYPE html><html><head><title>{APP_NAME}</title>
+              <style>{STYLE}</style></head>
               <body><div class="card">
                 <h1>{APP_NAME}</h1>
                 <h2>Self-Service VM &mdash; Deployed via Developer Hub</h2>
@@ -395,7 +411,7 @@
                   <tr><th>Hostname</th><td>{socket.gethostname()}</td></tr>
                   <tr><th>Kernel</th><td>{platform.release()}</td></tr>
                   <tr><th>Uptime</th><td>{uptime}</td></tr>
-                  <tr><th>Server Time</th><td>{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
+                  <tr><th>Server Time</th><td>{now}</td></tr>
                   <tr><th>Python</th><td>{platform.python_version()}</td></tr>
                 </table>
                 <p style="margin-top:24px;font-size:13px;color:#666;">
@@ -411,10 +427,8 @@
               @app.route("/api/info")
               def info():
                   return jsonify(
-                      app=APP_NAME,
-                      namespace=NAMESPACE,
-                      hostname=socket.gethostname(),
-                      kernel=platform.release(),
+                      app=APP_NAME, namespace=NAMESPACE,
+                      hostname=socket.gethostname(), kernel=platform.release(),
                       python=platform.python_version(),
                       time=datetime.datetime.now().isoformat()
                   )
@@ -427,25 +441,15 @@
                           sudo_rules = f.read().strip()
                   except FileNotFoundError:
                       sudo_rules = "No sudoers file found"
-                  allowed = [cmd.strip() for cmd in sudo_rules.split("NOPASSWD:")[-1].split(",")]
-                  return f"""<!DOCTYPE html>
-              <html>
-              <head><title>{APP_NAME} — Access Control</title>
-              <style>
-                body {{ font-family: 'Red Hat Display', sans-serif; background: #151515; color: #e0e0e0;
-                       display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }}
-                .card {{ background: #1e1e1e; border: 1px solid #333; border-radius: 8px;
-                        padding: 40px; max-width: 700px; }}
-                h1 {{ color: #ee0000; text-align: center; }} h2 {{ color: #06c; }}
-                table {{ margin: 20px auto; border-collapse: collapse; text-align: left; width: 100%; }}
-                td, th {{ padding: 8px 16px; border-bottom: 1px solid #333; }}
-                .allowed {{ color: #4caf50; }} .denied {{ color: #ef5350; }}
-                code {{ background: #2a2a2a; padding: 2px 8px; border-radius: 4px; font-size: 14px; }}
-                .rule-box {{ background: #0d1117; border: 1px solid #333; border-radius: 6px;
-                            padding: 16px; font-family: monospace; font-size: 13px; margin: 16px 0; white-space: pre-wrap; }}
-              </style></head>
-              <body><div class="card">
-                <h1>Access Control</h1>
+                  parts = sudo_rules.split("NOPASSWD:")
+                  allowed = [c.strip() for c in parts[-1].split(",")] if len(parts) > 1 else []
+                  allowed_rows = "".join(
+                      f'<tr><td><code>{c}</code></td><td class="allowed">ALLOWED</td></tr>' for c in allowed
+                  )
+                  return f"""<!DOCTYPE html><html><head><title>{APP_NAME} — Access</title>
+              <style>{STYLE} .card {{ max-width: 700px; text-align: left; }}</style></head>
+              <body><div class="card" style="text-align:left;">
+                <h1 style="text-align:center;">Access Control</h1>
                 <h2>Service Account: <code>{SVC_ACCOUNT}</code></h2>
                 <table>
                   <tr><th>Property</th><th>Value</th></tr>
@@ -457,14 +461,14 @@
                 <div class="rule-box">{sudo_rules}</div>
                 <table>
                   <tr><th>Command</th><th>Access</th></tr>
-                  {''.join(f'<tr><td><code>{cmd}</code></td><td class="allowed">ALLOWED</td></tr>' for cmd in allowed)}
+                  {allowed_rows}
                   <tr><td><code>yum / dnf install *</code></td><td class="denied">DENIED</td></tr>
                   <tr><td><code>useradd / userdel</code></td><td class="denied">DENIED</td></tr>
                   <tr><td><code>rm -rf /</code></td><td class="denied">DENIED</td></tr>
                   <tr><td><code>shutdown / reboot</code></td><td class="denied">DENIED</td></tr>
                 </table>
                 <p style="margin-top:24px;font-size:13px;color:#666;text-align:center;">
-                  Principle of least privilege enforced by Ansible Automation Platform
+                  Principle of least privilege &mdash; enforced by Ansible Automation Platform
                 </p>
               </div></body></html>"""
 
