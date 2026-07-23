@@ -330,61 +330,96 @@
       when: workflow_callback_url is defined and workflow_callback_url | length > 0
       ignore_errors: true
 
-# ── Play 2: Deploy application from container registry ─────────────────────
-- name: Deploy Application from Container Registry
+# ── Play 2: Deploy Python web app from PyPI ───────────────────────────────
+- name: Deploy Web Application from PyPI
   hosts: provisioned_vms
   gather_facts: true
   become: true
 
   tasks:
-    - name: Deploy containerised web application
+    - name: Deploy web application
       block:
-        - name: Create application content directory
+        - name: Create application directory
           ansible.builtin.file:
             path: /opt/app
             state: directory
             mode: "0755"
 
-        - name: Deploy application landing page
+        - name: Install pip from PyPI (bootstrap)
+          ansible.builtin.shell: |
+            curl -sSL https://bootstrap.pypa.io/get-pip.py | python3
+          args:
+            creates: /usr/local/bin/pip3
+
+        - name: Install Flask web framework from PyPI
+          ansible.builtin.command:
+            cmd: python3 -m pip install flask
+
+        - name: Deploy Flask application
           ansible.builtin.copy:
-            dest: /opt/app/index.html
+            dest: /opt/app/app.py
             mode: "0644"
             content: |
-              <!DOCTYPE html>
+              from flask import Flask
+              import socket, platform
+
+              app = Flask(__name__)
+
+              @app.route("/")
+              def index():
+                  return """<!DOCTYPE html>
               <html>
               <head><title>{{ vm_name }}</title>
               <style>
-                body { font-family: 'Red Hat Display', sans-serif; background: #151515; color: #e0e0e0; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-                .card { background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 40px; max-width: 600px; text-align: center; }
+                body { font-family: 'Red Hat Display', sans-serif; background: #151515; color: #e0e0e0;
+                       display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+                .card { background: #1e1e1e; border: 1px solid #333; border-radius: 8px;
+                        padding: 40px; max-width: 600px; text-align: center; }
                 h1 { color: #ee0000; } h2 { color: #06c; }
                 table { margin: 20px auto; border-collapse: collapse; text-align: left; }
                 td, th { padding: 8px 16px; border-bottom: 1px solid #333; }
-                .badge { background: #1e4620; color: #4caf50; padding: 4px 12px; border-radius: 12px; font-size: 14px; }
+                .badge { background: #1e4620; color: #4caf50; padding: 4px 12px;
+                         border-radius: 12px; font-size: 14px; }
               </style></head>
               <body><div class="card">
-                <h1>Welcome to {{ vm_name }}!</h1>
-                <h2>Deployed from Container Registry via RHDH</h2>
-                <p><span class="badge">&#x2714; Healthy</span></p>
+                <h1>{{ vm_name }}</h1>
+                <h2>Deployed from PyPI via Red Hat Developer Hub</h2>
+                <p><span class="badge">&#x2714; Running</span></p>
                 <table>
                   <tr><th>Host</th><td>{{ vm_name }}.{{ vm_namespace }}.svc.cluster.local</td></tr>
-                  <tr><th>Image</th><td>registry.access.redhat.com/ubi9/httpd-24</td></tr>
+                  <tr><th>Framework</th><td>Flask (installed from PyPI)</td></tr>
                   <tr><th>Service Account</th><td>{{ service_account_user }}</td></tr>
                   <tr><th>OS</th><td>RHEL {{ ansible_distribution_major_version | default('9') }}</td></tr>
-                  <tr><th>Platform</th><td>Red Hat Developer Hub + AAP</td></tr>
+                  <tr><th>Platform</th><td>RHDH + AAP + OpenShift Virtualization</td></tr>
                 </table>
-              </div></body></html>
+              </div></body></html>"""
 
-        - name: Pull web application image from Red Hat Container Registry
-          ansible.builtin.command:
-            cmd: podman pull registry.access.redhat.com/ubi9/httpd-24:latest
+              if __name__ == "__main__":
+                  app.run(host="0.0.0.0", port=80)
 
-        - name: Run web application container
-          ansible.builtin.shell: |
-            podman rm -f webapp 2>/dev/null || true
-            podman run -d --name webapp \
-              -p 80:8080 \
-              -v /opt/app/index.html:/var/www/html/index.html:Z \
-              registry.access.redhat.com/ubi9/httpd-24:latest
+        - name: Create systemd service for web application
+          ansible.builtin.copy:
+            dest: /etc/systemd/system/webapp.service
+            mode: "0644"
+            content: |
+              [Unit]
+              Description=Flask Web Application
+              After=network.target
+              [Service]
+              Type=simple
+              WorkingDirectory=/opt/app
+              ExecStart=/usr/bin/python3 /opt/app/app.py
+              Restart=always
+              RestartSec=3
+              [Install]
+              WantedBy=multi-user.target
+
+        - name: Start and enable web application
+          ansible.builtin.systemd:
+            name: webapp
+            state: started
+            enabled: true
+            daemon_reload: true
 
         - name: Verify application is responding
           ansible.builtin.uri:
@@ -401,12 +436,12 @@
             shell: /bin/bash
             create_home: true
 
-        - name: Grant limited sudo for container management
+        - name: Grant limited sudo for app management
           ansible.builtin.copy:
             dest: "/etc/sudoers.d/{{ service_account_user }}"
             mode: "0440"
             content: |
-              {{ service_account_user }} ALL=(ALL) NOPASSWD: /usr/bin/podman restart webapp, /usr/bin/podman logs webapp, /usr/bin/podman ps
+              {{ service_account_user }} ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart webapp, /usr/bin/systemctl status webapp, /usr/bin/journalctl -u webapp*
             validate: /usr/sbin/visudo -cf %s
 
         - name: Inject SSH public key for service account
@@ -419,4 +454,4 @@
       rescue:
         - name: Application deployment encountered errors
           ansible.builtin.debug:
-            msg: "Container deployment had issues — VM is provisioned, app stack needs manual attention."
+            msg: "App deployment had issues — VM is provisioned, app may need manual attention."
