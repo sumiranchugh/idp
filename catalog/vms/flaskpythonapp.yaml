@@ -1,0 +1,36 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: flaskpythonapp
+  namespace: default
+  title: "RHEL VM: flaskpythonapp"
+  description: |
+    RHEL 9 VM provisioned via Developer Hub.
+    App URL: https://flaskpythonapp-vms.apps.cluster-z5jjn.dyn.redhatworkshops.io
+    SSH: flaskpythonapp-ssh.vms.svc.cluster.local
+  annotations:
+    backstage.io/kubernetes-id: flaskpythonapp
+    backstage.io/kubernetes-namespace: vms
+    orchestrator.backstage.io/workflow-id: vm-provisioning-approval
+    servicenow.com/entity-id: flaskpythonapp
+  links:
+    - url: https://flaskpythonapp-vms.apps.cluster-z5jjn.dyn.redhatworkshops.io
+      title: Application
+      icon: dashboard
+    - url: https://flaskpythonapp-vms.apps.cluster-z5jjn.dyn.redhatworkshops.io/access
+      title: Access Control
+      icon: security
+    - url: https://flaskpythonapp-vms.apps.cluster-z5jjn.dyn.redhatworkshops.io/health
+      title: Health Check
+      icon: healing
+  tags:
+    - vm
+    - rhel
+    - flask
+spec:
+  type: vm
+  lifecycle: production
+  owner: "group:default/application-team"
+  system: openshift-virtualization
+  dependsOn:
+    - component:default/rhel-vm-provisioning
