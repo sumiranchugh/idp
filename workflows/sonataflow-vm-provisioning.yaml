@@ -28,7 +28,7 @@ metadata:
 spec:
   podTemplate:
     container:
-      image: quay.io/suchugh/vm-provisioning-approval@sha256:875c30919116a4fe74ce89a28402d89f81cad71e32f4e010e5f5d94d1a4cf704
+      image: quay.io/suchugh/vm-provisioning-approval@sha256:7ea8cbe98e9db205213758dbd5fbfeda907cdb27636b67f32838a65ad8bf479b
       envFrom:
         - secretRef:
             name: sonataflow-workflow-db-secret
@@ -151,7 +151,6 @@ spec:
                   workflow_callback_url: "https://vm-provisioning-approval-developer-hub.__CLUSTER_DOMAIN__/callback-aap"
                   workflow_instance_id: $WORKFLOW.instanceId
             actionDataFilter:
-              results: .result
               toStateData: .aapJob
         stateDataFilter:
           output: '. + {"workflow_status": "VM Provisioning In Progress", "aap_job_id": (.aapJob.id // .aapJob.job | tostring)}'
