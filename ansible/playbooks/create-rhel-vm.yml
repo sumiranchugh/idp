@@ -53,8 +53,7 @@
               app: "{{ vm_name }}"
               os: "rhel{{ rhel_version }}"
               vm.kubevirt.io/name: "{{ vm_name }}"
-              # Backstage Kubernetes plugin label — links this VM to the rhel-vm-provisioning component
-              backstage.io/kubernetes-id: rhel-vm-provisioning
+              backstage.io/kubernetes-id: "{{ vm_name }}"
           spec:
             dataVolumeTemplates:
               - apiVersion: cdi.kubevirt.io/v1beta1
@@ -168,7 +167,7 @@
             namespace: "{{ vm_namespace }}"
             labels:
               app: "{{ vm_name }}"
-              backstage.io/kubernetes-id: rhel-vm-provisioning
+              backstage.io/kubernetes-id: "{{ vm_name }}"
           spec:
             type: ClusterIP
             selector:
@@ -190,7 +189,7 @@
             namespace: "{{ vm_namespace }}"
             labels:
               app: "{{ vm_name }}"
-              backstage.io/kubernetes-id: rhel-vm-provisioning
+              backstage.io/kubernetes-id: "{{ vm_name }}"
           spec:
             type: ClusterIP
             selector:
@@ -212,7 +211,7 @@
             namespace: "{{ vm_namespace }}"
             labels:
               app: "{{ vm_name }}"
-              backstage.io/kubernetes-id: rhel-vm-provisioning
+              backstage.io/kubernetes-id: "{{ vm_name }}"
           spec:
             to:
               kind: Service
