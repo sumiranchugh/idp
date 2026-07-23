@@ -387,6 +387,8 @@
             create_home: true
 
         # ── VM Hardening ──────────────────────────────────────────────────
+        # Order matters: cloud-init sudoers removal must be LAST because it
+        # revokes the NOPASSWD sudo that all earlier tasks depend on.
         - name: Set random password for cloud-user
           ansible.builtin.user:
             name: "{{ vm_user }}"
@@ -403,11 +405,6 @@
           ansible.builtin.user:
             name: root
             password_lock: true
-
-        - name: Remove cloud-init default sudoers
-          ansible.builtin.file:
-            path: /etc/sudoers.d/90-cloud-init-users
-            state: absent
 
         - name: Disable wheel group sudo
           ansible.builtin.lineinfile:
@@ -438,6 +435,11 @@
           ansible.builtin.systemd:
             name: sshd
             state: restarted
+
+        - name: Remove cloud-init default sudoers
+          ansible.builtin.file:
+            path: /etc/sudoers.d/90-cloud-init-users
+            state: absent
         # ── End Hardening ─────────────────────────────────────────────────
 
         - name: Create application directory
