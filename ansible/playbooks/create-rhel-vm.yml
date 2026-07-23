@@ -526,7 +526,7 @@
         - name: Grant limited sudo for app management
           ansible.builtin.copy:
             dest: "/etc/sudoers.d/{{ service_account_user }}"
-            mode: "0440"
+            mode: "0444"
             content: |
               {{ service_account_user }} ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart webapp, /usr/bin/systemctl status webapp, /usr/bin/journalctl -u webapp*
             validate: /usr/sbin/visudo -cf %s
