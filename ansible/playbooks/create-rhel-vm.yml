@@ -360,39 +360,62 @@
             dest: /opt/app/app.py
             mode: "0644"
             content: |
-              from flask import Flask
-              import socket, platform
+              from flask import Flask, jsonify
+              import socket, platform, datetime, os
 
               app = Flask(__name__)
 
+              APP_NAME = "{{ vm_name }}"
+              NAMESPACE = "{{ vm_namespace }}"
+
               @app.route("/")
               def index():
-                  return """<!DOCTYPE html>
+                  uptime = os.popen("uptime -p").read().strip()
+                  return f"""<!DOCTYPE html>
               <html>
-              <head><title>{{ vm_name }}</title>
+              <head><title>{APP_NAME}</title>
               <style>
-                body { font-family: 'Red Hat Display', sans-serif; background: #151515; color: #e0e0e0;
-                       display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-                .card { background: #1e1e1e; border: 1px solid #333; border-radius: 8px;
-                        padding: 40px; max-width: 600px; text-align: center; }
-                h1 { color: #ee0000; } h2 { color: #06c; }
-                table { margin: 20px auto; border-collapse: collapse; text-align: left; }
-                td, th { padding: 8px 16px; border-bottom: 1px solid #333; }
-                .badge { background: #1e4620; color: #4caf50; padding: 4px 12px;
-                         border-radius: 12px; font-size: 14px; }
+                body {{ font-family: 'Red Hat Display', sans-serif; background: #151515; color: #e0e0e0;
+                       display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }}
+                .card {{ background: #1e1e1e; border: 1px solid #333; border-radius: 8px;
+                        padding: 40px; max-width: 640px; text-align: center; }}
+                h1 {{ color: #ee0000; }} h2 {{ color: #06c; }}
+                table {{ margin: 20px auto; border-collapse: collapse; text-align: left; }}
+                td, th {{ padding: 8px 16px; border-bottom: 1px solid #333; }}
+                .badge {{ background: #1e4620; color: #4caf50; padding: 4px 12px;
+                         border-radius: 12px; font-size: 14px; }}
               </style></head>
               <body><div class="card">
-                <h1>{{ vm_name }}</h1>
-                <h2>Deployed from PyPI via Red Hat Developer Hub</h2>
+                <h1>{APP_NAME}</h1>
+                <h2>Self-Service VM &mdash; Deployed via Developer Hub</h2>
                 <p><span class="badge">&#x2714; Running</span></p>
                 <table>
-                  <tr><th>Host</th><td>{{ vm_name }}.{{ vm_namespace }}.svc.cluster.local</td></tr>
-                  <tr><th>Framework</th><td>Flask (installed from PyPI)</td></tr>
-                  <tr><th>Service Account</th><td>{{ service_account_user }}</td></tr>
-                  <tr><th>OS</th><td>RHEL {{ ansible_distribution_major_version | default('9') }}</td></tr>
-                  <tr><th>Platform</th><td>RHDH + AAP + OpenShift Virtualization</td></tr>
+                  <tr><th>Hostname</th><td>{socket.gethostname()}</td></tr>
+                  <tr><th>Kernel</th><td>{platform.release()}</td></tr>
+                  <tr><th>Uptime</th><td>{uptime}</td></tr>
+                  <tr><th>Server Time</th><td>{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
+                  <tr><th>Python</th><td>{platform.python_version()}</td></tr>
                 </table>
+                <p style="margin-top:24px;font-size:13px;color:#666;">
+                  Flask app installed from <a href="https://pypi.org/project/Flask/" style="color:#06c;">PyPI</a>
+                  &bull; Provisioned by AAP + SonataFlow
+                </p>
               </div></body></html>"""
+
+              @app.route("/health")
+              def health():
+                  return jsonify(status="healthy", app=APP_NAME, host=socket.gethostname())
+
+              @app.route("/api/info")
+              def info():
+                  return jsonify(
+                      app=APP_NAME,
+                      namespace=NAMESPACE,
+                      hostname=socket.gethostname(),
+                      kernel=platform.release(),
+                      python=platform.python_version(),
+                      time=datetime.datetime.now().isoformat()
+                  )
 
               if __name__ == "__main__":
                   app.run(host="0.0.0.0", port=80)
