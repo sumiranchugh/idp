@@ -436,11 +436,7 @@
             name: sshd
             state: restarted
 
-        - name: Remove cloud-init default sudoers
-          ansible.builtin.file:
-            path: /etc/sudoers.d/90-cloud-init-users
-            state: absent
-        # ── End Hardening ─────────────────────────────────────────────────
+        # ── End Hardening (cloud-init sudoers removed at end of block) ────
 
         - name: Create application directory
           ansible.builtin.file:
@@ -628,6 +624,12 @@
             key: "{{ ssh_public_key }}"
             state: present
           when: ssh_public_key is defined and ssh_public_key | length > 0
+
+        # Last privileged task: revoke cloud-user's NOPASSWD sudo
+        - name: Remove cloud-init default sudoers
+          ansible.builtin.file:
+            path: /etc/sudoers.d/90-cloud-init-users
+            state: absent
 
       rescue:
         - name: Application deployment encountered errors
