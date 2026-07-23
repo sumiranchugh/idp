@@ -28,7 +28,7 @@ metadata:
 spec:
   podTemplate:
     container:
-      image: quay.io/suchugh/vm-provisioning-approval@sha256:7ea8cbe98e9db205213758dbd5fbfeda907cdb27636b67f32838a65ad8bf479b
+      image: image-registry.openshift-image-registry.svc:5000/developer-hub/vm-provisioning-approval@sha256:a0a527afb85d19f341f1ed35c816dfa9d234430baf49ee0415ee8b7f3d083a5f
       envFrom:
         - secretRef:
             name: sonataflow-workflow-db-secret
@@ -207,6 +207,14 @@ spec:
                 close_notes: '${ "VM " + .provisioningResult.vm_name + " provisioned successfully. Status: " + (.provisioningResult.vm_status // "Running") + ". SSH: ssh " + (.vm_user // "cloud-user") + "@" + (.provisioningResult.ssh_service // "N/A") + ". Provisioned by: AAP / Red Hat Developer Hub." }'
             actionDataFilter:
               toStateData: .incidentResult
+          - name: cr-set-approval
+            functionRef:
+              refName: closeCR
+              arguments:
+                sys_id: ${ .sncrsysid }
+                approval: "approved"
+            actionDataFilter:
+              toStateData: .crApprovalResult
           - name: cr-to-scheduled
             functionRef:
               refName: closeCR

@@ -270,9 +270,17 @@
             ssh_reachable: false
 
     # ── Callback notification (in Play 1 so it ALWAYS fires) ───────────────
+    - name: Get actual route host from cluster
+      kubernetes.core.k8s_info:
+        api_version: route.openshift.io/v1
+        kind: Route
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: route_info
+
     - name: Build app route URL
       set_fact:
-        app_route: "{{ vm_name }}-{{ vm_namespace }}.{{ lookup('env', 'CLUSTER_DOMAIN') | default('apps.example.com', true) }}"
+        app_route: "{{ route_info.resources[0].spec.host | default(vm_name + '-' + vm_namespace + '.' + lookup('env', 'CLUSTER_DOMAIN') | default('apps.example.com', true)) }}"
 
     - name: Output VM details
       ansible.builtin.debug:
