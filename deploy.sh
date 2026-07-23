@@ -310,7 +310,7 @@ VALUES (
   'catalog',
   'catalog-entity',
   '[\"read\"]',
-  '{\"anyOf\":[{\"rule\":\"IS_ENTITY_OWNER\",\"resourceType\":\"catalog-entity\",\"params\":{\"claims\":[\"group:default/application-team\"]}},{\"rule\":\"IS_ENTITY_KIND\",\"resourceType\":\"catalog-entity\",\"params\":{\"kinds\":[\"template\",\"system\",\"group\",\"user\",\"location\",\"api\"]}}]}'
+  '{\"anyOf\":[{\"rule\":\"IS_ENTITY_OWNER\",\"resourceType\":\"catalog-entity\",\"params\":{}},{\"rule\":\"IS_ENTITY_KIND\",\"resourceType\":\"catalog-entity\",\"params\":{\"kinds\":[\"template\",\"system\",\"group\",\"user\",\"location\",\"api\"]}}]}'
 );
 " 2>/dev/null && echo "    Conditional policy applied." || echo "    WARNING: Could not apply conditional policy. Apply manually via RBAC admin UI."
 
