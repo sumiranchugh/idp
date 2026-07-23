@@ -4,13 +4,26 @@
 
 ---
 
+## What is Red Hat Developer Hub?
+
+Red Hat Developer Hub (RHDH) is Red Hat's supported distribution of [Backstage](https://backstage.io) — an open-source platform for building developer portals. It provides:
+
+- **Software Catalog** — A single place to discover and manage all your software assets (services, APIs, VMs, infrastructure)
+- **Software Templates** — Self-service forms that developers use to provision infrastructure and create projects following organizational standards ("golden paths")
+- **Plugin Ecosystem** — Extensible with plugins for ServiceNow, Ansible, Kubernetes, ArgoCD, and more — all surfaced in one UI
+- **RBAC** — Role-based access control so developers see what they need and admins control what's allowed
+
+Think of it as the "internal developer portal" — the single pane of glass where developers go to get things done, without needing to learn the underlying tools (ServiceNow, Ansible, OpenShift).
+
+---
+
 ## The Story
 
 Meet **Sarah** (user1), a developer on the Application Team. She needs a RHEL virtual machine to run a Flask-based microservice. Traditionally, this would mean filing tickets, waiting for approvals over email, coordinating with the infrastructure team for VM provisioning, and then manually setting up the application, service accounts, and access controls. A process that takes days or weeks.
 
 Today, Sarah does it in minutes — through a single self-service request in Red Hat Developer Hub. The platform handles everything: governance, approval, provisioning, application deployment, security hardening, and catalog registration — all automated, auditable, and repeatable.
 
-**Alex** (user2) is the Platform Engineer who built and manages this golden path. Alex sees everything — all workflow runs, all provisioned infrastructure, all ServiceNow records — from a single pane of glass.
+**Alex** (user2) is the Platform Engineer who built and manages this golden path. Alex sees everything — all workflow runs, all provisioned infrastructure, all ServiceNow records — from a single pane of glass. Sarah only sees what's relevant to her team.
 
 ---
 
@@ -264,15 +277,26 @@ The workflow has completed. The VM is registered in the catalog. ServiceNow reco
 
 > **Capability: RBAC + Governance**
 
-### What to show (as Alex/user2)
+### What to show
 
-1. **RBAC page** — Show the role assignments:
-   - Sarah (user1) has `developer` role: can request VMs, view catalog, see her own workflow runs
-   - Alex (user2) has `admin` role: full access including workflow admin views, RBAC management, catalog management
+1. **Log in as Sarah (user1)** — show what she sees:
+   - The Software Catalog shows only entities **owned by her team** (application-team) — her VMs, her resources
+   - She does **not** see the parent "RHEL VM Provisioning Service" component (owned by platform-team)
+   - She can run templates and view her own workflow runs
+   - She cannot access the RBAC admin page
 
-2. **Orchestrator admin view** — Alex sees ALL workflow runs across all users. Sarah only sees runs linked to her group.
+2. **Log in as Alex (user2)** — show the difference:
+   - Alex sees **everything** in the catalog — all entities across all teams
+   - The parent component shows all ServiceNow tickets, all VMs, all workflow runs
+   - The **Orchestrator** page shows all workflow instances across all users
+   - The **RBAC** page in the sidebar lets Alex manage roles and permissions
+   - Alex can refresh, delete, and manage catalog entities
 
-3. **AAP job artifacts** — Only AAP admins can retrieve the randomly generated VM password. It's not in OpenShift, not in Git, not in ServiceNow.
+3. **RBAC page** — Show the role assignments:
+   - `developer` role: conditional catalog access (own group only), scaffolder use, orchestrator use
+   - `admin` role: full catalog access, orchestrator admin views, RBAC management
+
+4. **AAP job artifacts** — Only AAP admins can retrieve the randomly generated VM password. It's not in OpenShift, not in Git, not in ServiceNow.
 
 ---
 
