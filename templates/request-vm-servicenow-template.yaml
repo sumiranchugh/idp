@@ -260,9 +260,12 @@ spec:
       - title: Track Workflow in Orchestrator
         url: ${{ steps['start-workflow'].output.instanceUrl }}
         icon: dashboard
-      - title: View VM in Catalog
-        url: /catalog/default/resource/${{ parameters.vm_name }}
-        icon: catalog
+      - title: ServiceNow Incident
+        url: https://dev423121.service-now.com/nav_to.do?uri=incident.do?sys_id=${{ steps['create-sn-incident'].output.result.sys_id }}
+        icon: alert
+      - title: ServiceNow Change Request
+        url: https://dev423121.service-now.com/nav_to.do?uri=change_request.do?sys_id=${{ steps['create-sn-cr'].output.result.sys_id }}
+        icon: docs
     text:
       - title: Request Submitted for Approval
         content: |
