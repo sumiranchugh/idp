@@ -347,7 +347,8 @@
 
         - name: Install pip from PyPI (bootstrap)
           ansible.builtin.shell: |
-            curl -sSL https://bootstrap.pypa.io/get-pip.py | python3
+            PY_VER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+            curl -sSL "https://bootstrap.pypa.io/pip/${PY_VER}/get-pip.py" | python3
           args:
             creates: /usr/local/bin/pip3
 
