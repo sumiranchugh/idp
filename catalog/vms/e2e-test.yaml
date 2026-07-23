@@ -1,0 +1,22 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: e2e-test
+  namespace: default
+  title: "RHEL VM: e2e-test"
+  description: |
+    RHEL 9 VM provisioned via Developer Hub.
+  annotations:
+    backstage.io/kubernetes-id: e2e-test
+    backstage.io/kubernetes-namespace: vms
+    orchestrator.backstage.io/workflow-id: vm-provisioning-approval
+  tags:
+    - vm
+    - rhel
+spec:
+  type: vm
+  lifecycle: production
+  owner: "group:default/application-team"
+  system: openshift-virtualization
+  dependsOn:
+    - component:default/rhel-vm-provisioning
