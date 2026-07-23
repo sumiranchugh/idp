@@ -253,17 +253,15 @@ spec:
           sn_cr_number: ${{ steps['create-sn-cr'].output.result.number }}
           sn_cr_url: ""
           sn_incident_url: ""
-
-    # Step 5 removed — the workflow's callback action now stores the instance ID
-    # and callback URL in the SN CR via REST call through RHDH proxy.
+          owner_group: "${{ user.entity.spec.memberOf[0] | default('application-team') }}"
 
   output:
     links:
       - title: Track Workflow in Orchestrator
         url: ${{ steps['start-workflow'].output.instanceUrl }}
         icon: dashboard
-      - title: View VM Infrastructure
-        url: /catalog/default/component/rhel-vm-provisioning
+      - title: View VM in Catalog
+        url: /catalog/default/resource/${{ parameters.vm_name }}
         icon: catalog
     text:
       - title: Request Submitted for Approval

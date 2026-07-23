@@ -32,13 +32,23 @@ data:
     p, role:default/admin, orchestrator.workflowAdminView, read, allow
     p, role:default/admin, orchestrator.instanceAdminView, read, allow
 
+    # ── Developer role — scaffolder + orchestrator (no blanket catalog read) ─
+    p, role:default/developer, scaffolder-template, read, allow
+    p, role:default/developer, scaffolder-template, use, allow
+    p, role:default/developer, scaffolder-action, use, allow
+    p, role:default/developer, scaffolder.task.create, create, allow
+    p, role:default/developer, scaffolder.task.read, read, allow
+    p, role:default/developer, scaffolder.task.cancel, use, allow
+    p, role:default/developer, orchestrator.workflow, read, allow
+    p, role:default/developer, orchestrator.workflow.use, update, allow
+
     # ── Kubernetes + Topology permissions ────────────────────────────────────────────
     p, role:default/admin, kubernetes.clusters.read, read, allow
     p, role:default/admin, kubernetes.resources.read, read, allow
-    p, role:default/user, kubernetes.clusters.read, read, allow
-    p, role:default/user, kubernetes.resources.read, read, allow
+    p, role:default/developer, kubernetes.clusters.read, read, allow
+    p, role:default/developer, kubernetes.resources.read, read, allow
     p, role:default/admin, topology.view.read, read, allow
-    p, role:default/user, topology.view.read, read, allow
+    p, role:default/developer, topology.view.read, read, allow
 
     # ── RBAC management (admin UI) ────────────────────────────────────────
     p, role:default/admin, policy.entity.read, read, allow
@@ -49,6 +59,4 @@ data:
     # ── Role assignments ──────────────────────────────────────────────────
     g, user:default/__RHDH_SUPERADMIN__, role:default/rbac_admin
     g, user:default/__RHDH_SUPERADMIN__, role:default/admin
-
-    # All authenticated users get the basic user role
-    g, user:default/*, role:default/user
+    g, user:default/user1, role:default/developer

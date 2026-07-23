@@ -19,7 +19,7 @@ export OAUTH_CLIENT_ID OAUTH_CLIENT_SECRET
 export RHDH_NAMESPACE RHDH_SUPERADMIN BACKEND_SECRET
 export SN_BASE_URL SN_USERNAME SN_PASSWORD SN_BASIC_AUTH SN_TO_RHDH_TOKEN
 export AAP_BASE_URL AAP_TOKEN AAP_JOB_TEMPLATE_ID
-export GITHUB_REPO_BASE
+export GITHUB_REPO_BASE GITHUB_TOKEN
 
 RHDH_ROUTE="backstage-developer-hub-${RHDH_NAMESPACE}.${CLUSTER_DOMAIN}"
 export RHDH_ROUTE
@@ -157,6 +157,23 @@ stringData:
   AAP_BASE_URL: "https://placeholder.example.com"
   AAP_TOKEN: "placeholder"
 EOF
+fi
+
+if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+  oc apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: backstage-github-token
+  namespace: ${RHDH_NAMESPACE}
+  labels:
+    rhdh.redhat.com/ext-config-sync: "true"
+type: Opaque
+stringData:
+  GITHUB_TOKEN: "${GITHUB_TOKEN}"
+EOF
+else
+  echo "    (skipping backstage-github-token — GITHUB_TOKEN is empty)"
 fi
 
 # ── Kubernetes ServiceAccount + token for the K8S plugin ──────────────────────

@@ -42,6 +42,7 @@ spec:
         - name: backstage-aap-secret
         - name: backstage-servicenow-secret
         - name: backstage-external-token-secret
+        - name: backstage-github-token
 
     extraFiles:
       configMaps:
@@ -140,6 +141,15 @@ data:
           allowedMethods: ['GET', 'POST']
           headers:
             Authorization: Bearer ${AAP_TOKEN}
+        # GitHub API proxy — used by scaffolder to create catalog entity Gists
+        /github-api:
+          target: https://api.github.com
+          changeOrigin: true
+          secure: true
+          allowedMethods: ['GET', 'POST']
+          headers:
+            Authorization: token ${GITHUB_TOKEN}
+            Accept: application/vnd.github.v3+json
         # ServiceNow proxy - used by approval-based template
         /servicenow:
           target: ${SN_BASE_URL}
