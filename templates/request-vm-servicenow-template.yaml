@@ -167,7 +167,7 @@ spec:
           impact: "3"
           urgency: "3"
           state: "1"
-          u_backstage_entity_id: rhel-vm-provisioning
+          u_backstage_entity_id: ${{ parameters.vm_name }}
           u_vm_name: ${{ parameters.vm_name }}
           u_vm_namespace: ${{ parameters.vm_namespace }}
           u_vm_rhel_version: "${{ parameters.rhel_version }}"
@@ -208,7 +208,7 @@ spec:
           # SN Change Management workflow resets state to New on creation;
           # we move it to Assess via a separate modifyRecord step below.
           u_incident_sys_id: ${{ steps['create-sn-incident'].output.result.sys_id }}
-          u_backstage_entity_id: rhel-vm-provisioning
+          u_backstage_entity_id: ${{ parameters.vm_name }}
           u_vm_name: ${{ parameters.vm_name }}
           u_vm_namespace: ${{ parameters.vm_namespace }}
           u_vm_rhel_version: "${{ parameters.rhel_version }}"

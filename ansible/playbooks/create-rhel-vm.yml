@@ -54,6 +54,7 @@
               os: "rhel{{ rhel_version }}"
               vm.kubevirt.io/name: "{{ vm_name }}"
               backstage.io/kubernetes-id: "{{ vm_name }}"
+              provisioned-by: rhel-vm-provisioning
           spec:
             dataVolumeTemplates:
               - apiVersion: cdi.kubevirt.io/v1beta1
@@ -76,6 +77,7 @@
                   kubevirt.io/domain: "{{ vm_name }}"
                   app: "{{ vm_name }}"
                   backstage.io/kubernetes-id: "{{ vm_name }}"
+                  provisioned-by: rhel-vm-provisioning
               spec:
                 domain:
                   cpu:
@@ -169,6 +171,7 @@
             labels:
               app: "{{ vm_name }}"
               backstage.io/kubernetes-id: "{{ vm_name }}"
+              provisioned-by: rhel-vm-provisioning
           spec:
             type: ClusterIP
             selector:
@@ -191,6 +194,7 @@
             labels:
               app: "{{ vm_name }}"
               backstage.io/kubernetes-id: "{{ vm_name }}"
+              provisioned-by: rhel-vm-provisioning
           spec:
             type: ClusterIP
             selector:
@@ -213,6 +217,7 @@
             labels:
               app: "{{ vm_name }}"
               backstage.io/kubernetes-id: "{{ vm_name }}"
+              provisioned-by: rhel-vm-provisioning
           spec:
             to:
               kind: Service
