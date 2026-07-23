@@ -345,12 +345,6 @@
           vm_password: "{{ vm_runtime_password }}"
       no_log: true
 
-    - name: Clean up ephemeral SSH key pair
-      ansible.builtin.file:
-        path: "{{ bootstrap_ssh_dir.path }}"
-        state: absent
-      when: bootstrap_ssh_dir is defined
-
     - name: Notify SonataFlow workflow of VM provisioning completion
       uri:
         url: "{{ workflow_callback_url }}"
@@ -637,3 +631,15 @@
         - name: Application deployment encountered errors
           ansible.builtin.debug:
             msg: "App deployment had issues — VM is provisioned, app may need manual attention."
+
+# ── Play 3: Clean up ephemeral SSH key on localhost ──────────────────────────
+- name: Clean up ephemeral bootstrap key
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Remove ephemeral SSH key pair
+      ansible.builtin.file:
+        path: "{{ bootstrap_ssh_dir.path }}"
+        state: absent
+      when: bootstrap_ssh_dir is defined
