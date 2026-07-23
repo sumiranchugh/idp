@@ -258,38 +258,12 @@ data:
               # username: ${ARGOCD_USERNAME}
               # password: ${ARGOCD_PASSWORD}
 
-    # Dynamic Plugins Configuration
+    # Orchestrator plugin — hide Workflows tab from entities without the annotation
+    # The plugin registers under red-hat-developer-hub (not janus-idp)
     dynamicPlugins:
       frontend:
-        janus-idp.backstage-plugin-orchestrator:
-          entityTabs:
-            - path: /workflows
-              title: Workflows
-              mountPoint: entity.page.workflows
-              config:
-                if:
-                  allOf:
-                    - hasAnnotation: orchestrator.backstage.io/workflow-id
-          mountPoints:
-            - mountPoint: entity.page.overview/cards
-              importName: OrchestratorCard
-              config:
-                if:
-                  allOf:
-                    - hasAnnotation: orchestrator.backstage.io/workflow-id
-                layout:
-                  gridColumnEnd:
-                    lg: "span 8"
-                    md: "span 6"
-                    xs: "span 4"
-            - mountPoint: entity.page.workflows/cards
-              importName: OrchestratorCatalogTab
-              config:
-                if:
-                  allOf:
-                    - hasAnnotation: orchestrator.backstage.io/workflow-id
-            - mountPoint: search.page.types
-              importName: OrchestratorSearchResultListItem
+        red-hat-developer-hub.backstage-plugin-orchestrator:
+          entityTabs: []
 
     # Enable required plugins
     enabled:

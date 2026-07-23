@@ -295,6 +295,25 @@ done
 
 ROUTE_URL=$(oc get route backstage-developer-hub -n "$RHDH_NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || true)
 
+# ── RBAC conditional policy: developer sees only owned entities + shared kinds ─
+echo "==> Applying RBAC conditional policy for developer role..."
+PSQL_POD=$(oc get pod -n "$RHDH_NAMESPACE" -l postgres-operator.crunchydata.com/role=master -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || \
+           oc get pod -n "$RHDH_NAMESPACE" -l statefulset.kubernetes.io/pod-name=backstage-psql-${RHDH_NAMESPACE}-0 -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || \
+           echo "backstage-psql-${RHDH_NAMESPACE}-0")
+
+oc exec "$PSQL_POD" -n "$RHDH_NAMESPACE" -- psql -U postgres -d backstage_plugin_permission -c "
+DELETE FROM \"role-condition-policies\" WHERE \"roleEntityRef\" = 'role:default/developer' AND \"pluginId\" = 'catalog';
+INSERT INTO \"role-condition-policies\" (\"roleEntityRef\", \"result\", \"pluginId\", \"resourceType\", \"permissions\", \"conditionsJson\")
+VALUES (
+  'role:default/developer',
+  'CONDITIONAL',
+  'catalog',
+  'catalog-entity',
+  '[\"read\"]',
+  '{\"anyOf\":[{\"rule\":\"IS_ENTITY_OWNER\",\"resourceType\":\"catalog-entity\",\"params\":{\"claims\":[\"group:default/application-team\"]}},{\"rule\":\"IS_ENTITY_KIND\",\"resourceType\":\"catalog-entity\",\"params\":{\"kinds\":[\"template\",\"system\",\"group\",\"user\",\"location\",\"api\"]}}]}'
+);
+" 2>/dev/null && echo "    Conditional policy applied." || echo "    WARNING: Could not apply conditional policy. Apply manually via RBAC admin UI."
+
 # ── Configure AAP resources ──────────────────────────────────────────────────
 if [[ -n "${AAP_BASE_URL:-}" && "${AAP_BASE_URL}" != *"placeholder"* ]]; then
   echo ""
