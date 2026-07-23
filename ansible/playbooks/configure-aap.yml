@@ -175,15 +175,6 @@
               max: 32
               default: cloud-user
 
-            - question_name: VM Password
-              question_description: Default password for the VM user
-              required: false
-              type: password
-              variable: vm_password
-              min: 8
-              max: 128
-              default: redhat
-
             - question_name: Expose VM
               question_description: Create OpenShift Route to access VM
               required: true

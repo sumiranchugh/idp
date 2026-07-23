@@ -72,7 +72,6 @@ states:
               vm_disk_size: ${ .vm_disk_size }
               rhel_version: ${ .rhel_version }
               vm_user: ${ .vm_user }
-              vm_password: redhat
               ssh_public_key: ${ .ssh_public_key // "" }
               sn_request_number: ${ .sn_cr_number }
         actionDataFilter:

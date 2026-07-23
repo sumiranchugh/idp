@@ -28,9 +28,33 @@
         storage_class: "{{ storage_class | default('ocs-external-storagecluster-ceph-rbd') }}"
         vm_network: "{{ vm_network | default('default') }}"
         vm_user: "{{ vm_user | default('cloud-user') }}"
-        vm_password: "{{ vm_password | default('redhat') }}"
         ssh_public_key: "{{ ssh_public_key | default('') }}"
         expose_vm: "{{ expose_vm | default(false) }}"
+
+    - name: Generate random VM password (24 chars)
+      ansible.builtin.set_fact:
+        vm_runtime_password: "{{ lookup('password', '/dev/null length=24 chars=ascii_letters,digits') }}"
+      no_log: true
+
+    - name: Create temp directory for ephemeral SSH key
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: ansible_bootstrap_
+      register: bootstrap_ssh_dir
+
+    - name: Generate ephemeral Ed25519 SSH key pair
+      ansible.builtin.command:
+        cmd: "ssh-keygen -t ed25519 -f {{ bootstrap_ssh_dir.path }}/id_ed25519 -N '' -C 'ansible-bootstrap@{{ vm_name }}'"
+        creates: "{{ bootstrap_ssh_dir.path }}/id_ed25519"
+
+    - name: Read ephemeral public key
+      ansible.builtin.slurp:
+        src: "{{ bootstrap_ssh_dir.path }}/id_ed25519.pub"
+      register: bootstrap_pub_key_raw
+
+    - name: Set bootstrap public key fact
+      ansible.builtin.set_fact:
+        bootstrap_public_key: "{{ bootstrap_pub_key_raw.content | b64decode | trim }}"
 
     - name: Ensure namespace exists
       kubernetes.core.k8s:
@@ -111,14 +135,14 @@
                       userData: |
                         #cloud-config
                         user: {{ vm_user }}
-                        password: {{ vm_password }}
-                        chpasswd: { expire: False }
-                        {% if ssh_public_key != '' %}
+                        lock_passwd: true
                         ssh_authorized_keys:
+                          - {{ bootstrap_public_key }}
+                        {% if ssh_public_key != '' %}
                           - {{ ssh_public_key }}
                         {% endif %}
-                        ssh_pwauth: true
-                        disable_root: false
+                        ssh_pwauth: false
+                        disable_root: true
                         package_update: false
                         package_upgrade: false
                         timezone: UTC
@@ -247,7 +271,7 @@
             name: "{{ vm_name }}"
             ansible_host: "{{ vm_ssh_host }}"
             ansible_user: "{{ vm_user }}"
-            ansible_ssh_pass: "{{ vm_password }}"
+            ansible_ssh_private_key_file: "{{ bootstrap_ssh_dir.path }}/id_ed25519"
             ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
             groups: provisioned_vms
             vm_name: "{{ vm_name }}"
@@ -255,6 +279,7 @@
             vm_user: "{{ vm_user }}"
             service_account_user: "{{ service_account_user }}"
             ssh_public_key: "{{ ssh_public_key }}"
+            vm_runtime_password: "{{ vm_runtime_password }}"
 
         - name: Mark SSH as reachable
           set_fact:
@@ -317,6 +342,14 @@
           ssh_service: "{{ vm_ssh_host }}"
           service_account: "{{ service_account_user }}"
           app_url: "https://{{ app_route }}"
+          vm_password: "{{ vm_runtime_password }}"
+      no_log: true
+
+    - name: Clean up ephemeral SSH key pair
+      ansible.builtin.file:
+        path: "{{ bootstrap_ssh_dir.path }}"
+        state: absent
+      when: bootstrap_ssh_dir is defined
 
     - name: Notify SonataFlow workflow of VM provisioning completion
       uri:
@@ -358,6 +391,60 @@
             comment: "Service account for {{ vm_name }}"
             shell: /bin/bash
             create_home: true
+
+        # ── VM Hardening ──────────────────────────────────────────────────
+        - name: Set random password for cloud-user
+          ansible.builtin.user:
+            name: "{{ vm_user }}"
+            password: "{{ vm_runtime_password | password_hash('sha512') }}"
+          no_log: true
+
+        - name: Set random password for service account
+          ansible.builtin.user:
+            name: "{{ service_account_user }}"
+            password: "{{ vm_runtime_password | password_hash('sha512') }}"
+          no_log: true
+
+        - name: Lock root account
+          ansible.builtin.user:
+            name: root
+            password_lock: true
+
+        - name: Remove cloud-init default sudoers
+          ansible.builtin.file:
+            path: /etc/sudoers.d/90-cloud-init-users
+            state: absent
+
+        - name: Disable wheel group sudo
+          ansible.builtin.lineinfile:
+            path: /etc/sudoers
+            regexp: '^%wheel'
+            state: absent
+            validate: /usr/sbin/visudo -cf %s
+
+        - name: Remove bootstrap SSH key from cloud-user
+          ansible.builtin.lineinfile:
+            path: "/home/{{ vm_user }}/.ssh/authorized_keys"
+            regexp: 'ansible-bootstrap@{{ vm_name }}'
+            state: absent
+
+        - name: Disable SSH password authentication
+          ansible.builtin.lineinfile:
+            path: /etc/ssh/sshd_config
+            regexp: '^#?PasswordAuthentication'
+            line: 'PasswordAuthentication no'
+
+        - name: Disable SSH root login
+          ansible.builtin.lineinfile:
+            path: /etc/ssh/sshd_config
+            regexp: '^#?PermitRootLogin'
+            line: 'PermitRootLogin no'
+
+        - name: Restart sshd to apply hardening
+          ansible.builtin.systemd:
+            name: sshd
+            state: restarted
+        # ── End Hardening ─────────────────────────────────────────────────
 
         - name: Create application directory
           ansible.builtin.file:

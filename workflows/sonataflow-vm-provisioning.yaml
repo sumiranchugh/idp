@@ -146,7 +146,6 @@ spec:
                   vm_disk_size: ${ .vm_disk_size }
                   rhel_version: ${ .rhel_version }
                   vm_user: ${ .vm_user }
-                  vm_password: redhat
                   ssh_public_key: '${ .ssh_public_key // "" }'
                   workflow_callback_url: "https://vm-provisioning-approval-developer-hub.__CLUSTER_DOMAIN__/callback-aap"
                   workflow_instance_id: $WORKFLOW.instanceId

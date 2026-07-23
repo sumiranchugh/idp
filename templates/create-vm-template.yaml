@@ -98,13 +98,6 @@ spec:
           description: Default login username for the VM
           default: cloud-user
 
-        vm_password:
-          title: VM Password
-          type: string
-          description: Default login password (set via cloud-init)
-          default: redhat
-          ui:widget: password
-
         ssh_public_key:
           title: SSH Public Key
           type: string
@@ -137,7 +130,6 @@ spec:
             vm_disk_size: ${{ parameters.vm_disk_size }}
             rhel_version: "${{ parameters.rhel_version }}"
             vm_user: ${{ parameters.vm_user }}
-            vm_password: ${{ parameters.vm_password }}
             ssh_public_key: "${{ parameters.ssh_public_key | default('') }}"
 
     - id: log-job
@@ -173,5 +165,6 @@ spec:
 
           **SSH access once ready (~5-10 min):**
           ```
-          ssh ${{ parameters.vm_user }}@${{ parameters.vm_name }}-ssh.${{ parameters.vm_namespace }}.svc.cluster.local
+          ssh -i <your_private_key> svc_${{ parameters.vm_name | replace('-', '_') }}@${{ parameters.vm_name }}-ssh.${{ parameters.vm_namespace }}.svc.cluster.local
           ```
+          > Password-based SSH is disabled. Use your SSH key, or retrieve the VM password from the AAP job artifacts.
