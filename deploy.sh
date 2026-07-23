@@ -296,6 +296,9 @@ done
 ROUTE_URL=$(oc get route backstage-developer-hub -n "$RHDH_NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || true)
 
 # ── RBAC conditional policy: developer sees only owned entities + shared kinds ─
+# NOTE: Conditional policies live in the DB only (not CSV). They are cleared
+# on pod restart, so this section must run after the pod is ready. If the pod
+# is manually restarted, re-run this script or re-insert via psql.
 echo "==> Applying RBAC conditional policy for developer role..."
 PSQL_POD=$(oc get pod -n "$RHDH_NAMESPACE" -l postgres-operator.crunchydata.com/role=master -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || \
            oc get pod -n "$RHDH_NAMESPACE" -l statefulset.kubernetes.io/pod-name=backstage-psql-${RHDH_NAMESPACE}-0 -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || \
