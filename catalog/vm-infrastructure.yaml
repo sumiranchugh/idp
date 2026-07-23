@@ -18,9 +18,8 @@ metadata:
     servicenow.com/entity-id: rhel-vm-provisioning
     # Links entity to the Orchestrator workflow tab (shows Workflows tab)
     orchestrator.backstage.io/workflow-id: vm-provisioning-approval
-    # Kubernetes tab — shows VMs in the 'vms' namespace with label backstage.io/kubernetes-id=rhel-vm-provisioning
-    # VMs must have this label applied when provisioned (AAP playbook sets it)
-    backstage.io/kubernetes-id: rhel-vm-provisioning
+    # Kubernetes/Topology tab — shows ALL VMs provisioned by this service
+    backstage.io/kubernetes-label-selector: provisioned-by=rhel-vm-provisioning
     backstage.io/kubernetes-namespace: vms
   tags:
     - vm
