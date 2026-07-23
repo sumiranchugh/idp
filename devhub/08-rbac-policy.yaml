@@ -33,8 +33,9 @@ data:
     p, role:default/admin, orchestrator.instanceAdminView, read, allow
 
     # ── Developer role — catalog (conditional) + scaffolder + orchestrator ──
-    # catalog-entity read is conditional — see RBAC API condition below
-    # Developers see only entities owned by their group + shared kinds (Template, System, etc.)
+    # catalog-entity read is CONDITIONAL (created via RBAC REST API):
+    #   IS_ENTITY_OWNER($ownerRefs) OR IS_ENTITY_KIND(Component,Template,System,Group,User,Location,API,Resource)
+    # Developers see owned entities + read-only access to all shared kinds including Components
     p, role:default/developer, scaffolder-template, read, allow
     p, role:default/developer, scaffolder-template, use, allow
     p, role:default/developer, scaffolder-action, use, allow
@@ -61,7 +62,8 @@ data:
     p, role:default/admin, policy.entity.delete, delete, allow
 
     # ── Role assignments ──────────────────────────────────────────────────
+    # admin: full access to everything (catalog CRUD, RBAC mgmt, orchestrator admin)
+    # developer: conditional catalog read + scaffolder + orchestrator use
     g, user:default/__RHDH_SUPERADMIN__, role:default/rbac_admin
     g, user:default/__RHDH_SUPERADMIN__, role:default/admin
     g, user:default/user1, role:default/developer
-    g, user:default/user2, role:default/developer

@@ -321,7 +321,7 @@ ROUTE_URL=$(oc get route backstage-developer-hub -n "$RHDH_NAMESPACE" -o jsonpat
 #           {
 #             "rule": "IS_ENTITY_KIND",
 #             "resourceType": "catalog-entity",
-#             "params": { "kinds": ["Template","System","Group","User","Location","API","Resource"] }
+#             "params": { "kinds": ["Component","Template","System","Group","User","Location","API","Resource"] }
 #           }
 #         ]
 #       }
