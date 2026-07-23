@@ -216,9 +216,9 @@ data:
             kubernetesPluginRef: local-cluster
             schedule:
               frequency:
-                seconds: 10
+                minutes: 5
               timeout:
-                seconds: 60
+                minutes: 2
 
     # Kubernetes/OpenShift integration
     kubernetes:
@@ -266,10 +266,17 @@ data:
             - path: /workflows
               title: Workflows
               mountPoint: entity.page.workflows
+              config:
+                if:
+                  allOf:
+                    - hasAnnotation: orchestrator.backstage.io/workflow-id
           mountPoints:
             - mountPoint: entity.page.overview/cards
               importName: OrchestratorCard
               config:
+                if:
+                  allOf:
+                    - hasAnnotation: orchestrator.backstage.io/workflow-id
                 layout:
                   gridColumnEnd:
                     lg: "span 8"
