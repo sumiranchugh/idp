@@ -63,27 +63,31 @@ data:
     security:
       - bearerAuth: []
     paths:
-      /api/proxy/github-api/gists:
-        post:
-          operationId: createGist
-          summary: Create a GitHub Gist containing a catalog entity definition
+      /api/proxy/github-api/repos/sumiranchugh/idp/contents/catalog/vms/{filename}:
+        put:
+          operationId: createRepoFile
+          summary: Commit a catalog entity YAML file to the repo
           security:
             - bearerAuth: []
+          parameters:
+            - name: filename
+              in: path
+              required: true
+              schema:
+                type: string
           requestBody:
             content:
               application/json:
                 schema:
                   type: object
                   properties:
-                    description:
+                    message:
                       type: string
-                    public:
-                      type: boolean
-                    files:
-                      type: object
+                    content:
+                      type: string
           responses:
             "201":
-              description: Gist created
+              description: File created
               content:
                 application/json:
                   schema:
