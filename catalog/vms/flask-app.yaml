@@ -11,7 +11,6 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: flask-app
     backstage.io/kubernetes-namespace: vms
-    orchestrator.backstage.io/workflow-id: vm-provisioning-approval
     servicenow.com/entity-id: flask-app
   links:
     - url: https://flask-app-vms.apps.cluster-z5jjn.dyn.redhatworkshops.io
