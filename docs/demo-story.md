@@ -6,24 +6,26 @@
 
 ## What is Red Hat Developer Hub?
 
-Red Hat Developer Hub (RHDH) is Red Hat's supported distribution of [Backstage](https://backstage.io) — an open-source platform for building developer portals. It provides:
+In most enterprises, requesting infrastructure means filing tickets across multiple systems — ServiceNow for approvals, a separate request to the infra team for provisioning, emails for follow-up, and no single place to track the result. The tools exist (ServiceNow, Ansible, OpenShift), but they're siloed. Nobody has a unified view of the entire lifecycle from request to running workload.
+
+Red Hat Developer Hub (RHDH) is Red Hat's supported distribution of [Backstage](https://backstage.io) — an internal portal that gives teams a **single self-service interface** to request, track, and manage infrastructure and services. It provides:
 
 - **Software Catalog** — A single place to discover and manage all your software assets (services, APIs, VMs, infrastructure)
-- **Software Templates** — Self-service forms that developers use to provision infrastructure and create projects following organizational standards ("golden paths")
+- **Software Templates** — Self-service forms that teams use to provision infrastructure and create projects following organizational standards ("golden paths")
 - **Plugin Ecosystem** — Extensible with plugins for ServiceNow, Ansible, Kubernetes, ArgoCD, and more — all surfaced in one UI
-- **RBAC** — Role-based access control so developers see what they need and admins control what's allowed
+- **RBAC** — Role-based access control so each team sees what they need and platform owners control what's allowed
 
-Think of it as the "internal developer portal" — the single pane of glass where developers go to get things done, without needing to learn the underlying tools (ServiceNow, Ansible, OpenShift).
+Think of it as the single pane of glass where teams go to get things done — without needing to learn the underlying tools (ServiceNow, Ansible, OpenShift) or coordinate across multiple teams.
 
 ---
 
 ## The Story
 
-Meet **solnarchitect** (user1), a solutions architect on the Application Team. They need a RHEL virtual machine to run a Flask-based microservice. Traditionally, this would mean filing tickets, waiting for approvals over email, coordinating with the infrastructure team for VM provisioning, and then manually setting up the application, service accounts, and access controls. A process that takes days or weeks.
+Meet **solnarchitect** (user1), an infrastructure solutions architect on the Application Team. They need a RHEL virtual machine to host a Flask-based microservice. Traditionally, this would mean filing tickets across multiple systems, waiting for approvals over email, coordinating with the infrastructure team for provisioning, and then manually setting up the application, service accounts, and access controls. A process that takes days or weeks.
 
 Today, solnarchitect does it in minutes — through a single self-service request in Red Hat Developer Hub. The platform handles everything: governance, approval, provisioning, application deployment, security hardening, and catalog registration — all automated, auditable, and repeatable.
 
-**platowner** (user2) is the Platform Owner who built and manages this golden path. platowner sees everything — all workflow runs, all provisioned infrastructure, all ServiceNow records — from a single pane of glass. solnarchitect only sees what's relevant to their team.
+**platowner** (user2) is the Platform Owner who designed and manages this self-service golden path — the templates, workflows, playbooks, and RBAC policies that make it all work. platowner sees everything — all workflow runs, all provisioned infrastructure, all ServiceNow records — from a single pane of glass. solnarchitect only sees what's relevant to their team.
 
 ---
 
@@ -49,7 +51,7 @@ Before solnarchitect ever clicks a button, platowner has defined the entire serv
 
 2. **Highlight key files:**
 
-   - **`templates/request-vm-servicenow-template.yaml`** — The developer-facing template. Defines the form fields, validation rules, and the 4-step execution pipeline (create SN incident, create SN change request, move to assessment, start orchestrator workflow). This is the "golden path" definition.
+   - **`templates/request-vm-servicenow-template.yaml`** — The user-facing template designed by platowner. Defines the form fields, validation rules, and the 4-step execution pipeline (create SN incident, create SN change request, move to assessment, start orchestrator workflow). This is the "golden path" definition.
 
    - **`ansible/playbooks/create-rhel-vm.yml`** — The provisioning playbook. Two plays: Play 1 creates the VM on OpenShift Virtualization with cloud-init, networking, and routes. Play 2 SSHes into the VM, creates the service account, deploys the Flask app from PyPI, hardens security, and configures access controls. Everything is parameterized and repeatable.
 
@@ -63,7 +65,7 @@ Before solnarchitect ever clicks a button, platowner has defined the entire serv
 
 ---
 
-## Act 2: The Developer Experience — Self-Service Request
+## Act 2: The Self-Service Experience
 
 > **Capability: Self-Service Portal**
 
@@ -73,13 +75,13 @@ Before solnarchitect ever clicks a button, platowner has defined the entire serv
 
    URL: `https://backstage-developer-hub-developer-hub.apps.cluster-z5jjn.dyn.redhatworkshops.io`
 
-   solnarchitect authenticates via Keycloak SSO — the same identity provider the organization already uses.
+   solnarchitect authenticates via Keycloak SSO — the same identity provider the organization already uses. This is the only tool they need to touch.
 
 2. **Navigate to Create > Templates**
 
    solnarchitect sees the template catalog. Find **"Run Flask App on RHEL VM"**.
 
-   > Point out: solnarchitect sees only what they're authorized to see. The RBAC policy gives them the `developer` role — they can run templates and view the catalog, but they cannot manage RBAC or delete entities.
+   > Point out: solnarchitect sees only what they're authorized to see. The RBAC policy (configured by platowner) gives them the `developer` role — they can run templates and view the catalog, but they cannot manage RBAC or delete entities.
 
 3. **Fill out the request form** (3 pages):
 
@@ -122,7 +124,7 @@ Before solnarchitect ever clicks a button, platowner has defined the entire serv
 
 ### Key message
 
-> "solnarchitect filled out one form. Behind the scenes, the platform created two ServiceNow records, initiated the approval process, and started the orchestration workflow. They didn't need to know about ServiceNow, Ansible, or OpenShift. They just asked for what they needed."
+> "solnarchitect filled out one form in one portal. Behind the scenes, the platform created two ServiceNow records, initiated the approval process, and started the orchestration workflow. They didn't need to log into ServiceNow, learn Ansible, or have OpenShift access. They just asked for what they needed."
 
 ---
 
@@ -201,7 +203,7 @@ The workflow has triggered Ansible Automation Platform. The provisioning playboo
    - Deploys the web application with systemd service
    - Verifies the application responds on port 80
    - Grants limited sudo: only `systemctl restart/status webapp` and `journalctl`
-   - Injects solnarchitect's SSH public key into the service account
+   - Injects the requestor's SSH public key into the service account
 
 2. **Show the security model** (talking point, or show `oc get vm -o yaml`):
 
@@ -269,11 +271,11 @@ The workflow has completed. The VM is registered in the catalog. ServiceNow reco
 
 ### Key message
 
-> "The developer got their VM. The platform owner sees everything from one dashboard. ServiceNow has the complete audit trail. And every step was automated, governed, and repeatable. This isn't a one-off — this is a reusable pattern for any service the organization wants to offer."
+> "The solutions architect got their VM. The platform owner sees everything from one dashboard. ServiceNow has the complete audit trail. And every step was automated, governed, and repeatable. This isn't a one-off — this is a reusable pattern for any service the organization wants to offer."
 
 ---
 
-## Act 6: Platform Engineering — The Admin View
+## Act 6: Platform Governance — The Owner's View
 
 > **Capability: RBAC + Governance**
 
@@ -293,8 +295,9 @@ The workflow has completed. The VM is registered in the catalog. ServiceNow reco
    - platowner can refresh, delete, and manage catalog entities
 
 3. **RBAC page** — Show the role assignments:
-   - `developer` role: conditional catalog access (own group only), scaffolder use, orchestrator use
+   - `developer` role: conditional catalog access (own group + shared kinds), scaffolder use, orchestrator use
    - `admin` role: full catalog access, orchestrator admin views, RBAC management
+   - platowner configured these roles — they control who sees what
 
 4. **AAP job artifacts** — Only AAP admins can retrieve the randomly generated VM password. It's not in OpenShift, not in Git, not in ServiceNow.
 
@@ -303,7 +306,7 @@ The workflow has completed. The VM is registered in the catalog. ServiceNow reco
 ## Technical Architecture
 
 ```
-Solutions Architect (solnarchitect)
+Infra Solutions Architect (solnarchitect)
     |
     v
 Red Hat Developer Hub ──── Keycloak SSO (authentication)
@@ -371,8 +374,8 @@ ServiceNow ──────────────── Incident resolved, C
 
 | User | Role | Credentials |
 |------|------|-------------|
-| user1 (solnarchitect — Solutions Architect) | developer | Keycloak SSO |
-| user2 (platowner — Platform Owner) | admin + rbac_admin | Keycloak SSO |
+| user1 (solnarchitect — Infra Solutions Architect) | developer | Keycloak SSO |
+| user2 (platowner — Platform Owner / Workflow Owner) | admin + rbac_admin | Keycloak SSO |
 
 ---
 

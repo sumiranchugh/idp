@@ -4,13 +4,21 @@
 
 ---
 
-## Opening (30 seconds)
+## Opening — What is Red Hat Developer Hub? (1 minute)
 
-What if a developer could go from needing a virtual machine to having a fully provisioned, hardened, production-ready RHEL VM — with a running application, a dedicated service account, and a complete audit trail — just by filling out a single form?
+Let me start with a question. How does your organization handle infrastructure requests today?
 
-That's what we're going to show you today. [PAUSE]
+In most enterprises, it looks something like this. Someone needs a virtual machine. They file a ticket. That ticket goes to another team, who files another ticket. Approvals happen over email. Provisioning is manual. Configuration is manual. Security hardening — if it happens at all — is manual. The person who requested the VM has no visibility into where things stand. And by the time they get their VM, days or weeks have passed.
 
-We call this demo "Zero to Prod with Zero Friction." It brings together five Red Hat technologies — Developer Hub, Ansible Automation Platform, OpenShift Virtualization, SonataFlow, and ServiceNow — into one seamless self-service experience.
+The tools exist — ServiceNow, Ansible, OpenShift — but they're siloed. Nobody has a single view of the entire process. [PAUSE]
+
+Red Hat Developer Hub solves this. It's an internal developer portal — Red Hat's supported distribution of Backstage — that gives your teams a single self-service interface to request, track, and manage infrastructure. Instead of filing tickets across multiple systems, users fill out one form. Instead of coordinating between teams, the platform orchestrates everything automatically — governance, approval, provisioning, security — and gives everyone visibility into the result.
+
+Today I'm going to show you what that looks like end to end. [PAUSE]
+
+We have two personas. **solnarchitect** is an infrastructure solutions architect who needs a RHEL virtual machine to host a microservice. And **platowner** is the platform owner — the person who designed and manages the self-service golden path that makes this possible.
+
+Let's start with what platowner built.
 
 ---
 
@@ -18,29 +26,31 @@ We call this demo "Zero to Prod with Zero Friction." It brings together five Red
 
 **[Show the GitHub repo: github.com/sumiranchugh/idp]**
 
-Before anyone clicks a button, the entire service offering is defined as code. Let me walk you through what's in this repo.
+Before anyone fills out a form, the entire service offering is defined as code. Let me walk you through what's in this repo.
 
 **[Point to the folder structure]**
 
-The `templates` folder has the Scaffolder templates — these define the self-service forms that developers interact with. The `workflows` folder has the SonataFlow orchestration — that's the approval and provisioning pipeline. `ansible/playbooks` has the Ansible automation for VM creation and application deployment. `catalog` has the Backstage catalog entities. And `devhub` has the platform configuration — plugins, RBAC, secrets.
+The `templates` folder has the Scaffolder templates — these define the self-service forms that users interact with. The `workflows` folder has the SonataFlow orchestration — that's the approval and provisioning pipeline. `ansible/playbooks` has the Ansible automation for VM creation and application deployment. `catalog` has the Backstage catalog entities. And `devhub` has the platform configuration — plugins, RBAC, secrets.
 
 **[Open templates/request-vm-servicenow-template.yaml]**
 
-This is the developer-facing template. It defines three pages of form fields with validation rules, and a four-step execution pipeline — create a ServiceNow incident, create a change request, move it to assessment, and start the orchestrator workflow. This is the golden path.
+This is the user-facing template that platowner designed. It defines three pages of form fields with validation rules, and a four-step execution pipeline — create a ServiceNow incident, create a change request, move it to assessment, and start the orchestrator workflow. This is the golden path.
 
 **[Open ansible/playbooks/create-rhel-vm.yml]**
 
 And this is the provisioning playbook. Two plays — the first creates the VM on OpenShift Virtualization with cloud-init, networking, and routes. The second SSHes into the VM, creates a service account, deploys a Flask app from PyPI, and hardens the security posture. Every parameter is configurable. Nothing is hardcoded. [PAUSE]
 
-The key message here — every aspect of this service lives in Git. It's reviewable, auditable, version-controlled, and repeatable across environments.
+The key message here — every aspect of this service lives in Git. The form, the approval workflow, the provisioning logic, the security controls, the platform configuration. It's reviewable, auditable, version-controlled, and repeatable across environments. platowner owns all of it.
 
 ---
 
-## Act 2 — The Developer Experience (2 minutes)
+## Act 2 — The Self-Service Experience (2 minutes)
 
 **[Log in to RHDH as user1 / solnarchitect]**
 
-Now let's switch to the developer's perspective. This is solnarchitect — a solutions architect on the Application Team. They've logged in through Keycloak SSO — the same identity provider the organization already uses.
+Now let's switch to the requestor's perspective. This is solnarchitect — an infrastructure solutions architect. They need a RHEL VM to host a microservice for their team. They've logged into Developer Hub through Keycloak SSO — the same identity provider the organization already uses.
+
+Notice — this is the only tool solnarchitect needs to touch. They don't need to log into ServiceNow. They don't need to know how Ansible works. They don't need OpenShift access. Everything happens through this one portal.
 
 **[Navigate to Create > Templates > "Run Flask App on RHEL VM"]**
 
@@ -48,19 +58,19 @@ solnarchitect sees the template catalog. Let's find "Run Flask App on RHEL VM" a
 
 **[Fill out Page 1 — VM Configuration]**
 
-We name the VM, pick the namespace, choose RHEL 9, set CPU, memory, and disk size. Notice the validation — the VM name only accepts lowercase alphanumeric with hyphens. These guardrails are built into the template.
+We name the VM, pick the namespace, choose RHEL 9, set CPU, memory, and disk size. Notice the validation — the VM name only accepts lowercase alphanumeric with hyphens. These guardrails are built into the template by platowner.
 
 **[Fill out Page 2 — Access and Purpose]**
 
-Here we set the VM username and optionally an SSH public key. And this field is important — "Business Justification." This is required. Whatever solnarchitect types here feeds directly into the ServiceNow change request for manager approval.
+Here we set the VM username and optionally paste an SSH public key. And this field is important — "Business Justification." This is required. Whatever solnarchitect types here feeds directly into the ServiceNow change request for manager approval.
 
 **[Fill out Page 3 — Review, then click Create]**
 
 Now watch the four steps execute in sequence. [PAUSE]
 
-Step one — ServiceNow incident created. Step two — change request created. Step three — the change request is moved to assessment, which activates the approve and reject buttons. Step four — the orchestrator workflow starts.
+Step one — ServiceNow incident created. Step two — change request created. Step three — the change request is moved to assessment, which activates the approve and reject buttons in ServiceNow. Step four — the orchestrator workflow starts.
 
-solnarchitect gets links to track the workflow, the ServiceNow incident, and the change request. They filled out one form. Behind the scenes, the platform created two ServiceNow records, initiated the approval process, and started the orchestration workflow. They didn't need to know about ServiceNow, Ansible, or OpenShift.
+solnarchitect gets links to track the workflow, the ServiceNow incident, and the change request — all from right here. One form. Behind the scenes, the platform created two ServiceNow records, initiated the approval process, and started the orchestration. solnarchitect didn't need to know about any of the underlying tools.
 
 ---
 
@@ -76,13 +86,13 @@ Look at this change request. All the VM parameters are captured — name, CPUs, 
 
 **[Switch to RHDH Orchestrator view as platowner / user2]**
 
-If we look at the orchestrator in Developer Hub, the workflow shows "Pending Manager Approval." It's in a callback state — it's not polling. It will resume only when ServiceNow sends a CloudEvent.
+If we look at the orchestrator in Developer Hub — this is platowner's view — the workflow shows "Pending Manager Approval." It's in a callback state — it's not polling. It will resume only when ServiceNow sends a CloudEvent.
 
 **[Go back to ServiceNow and click Approve]**
 
 Now I approve the change request. Behind the scenes, a ServiceNow Business Rule fires, posts a CloudEvent to the SonataFlow callback URL, and the workflow resumes automatically. [PAUSE]
 
-The approval happened entirely within ServiceNow — the system the operations team already uses. No new tools to learn. The entire approval chain is recorded for audit and compliance.
+The approval happened entirely within ServiceNow — the system the operations team already uses. No new tools to learn, no new approval workflows to build. The entire approval chain is recorded for audit and compliance.
 
 ---
 
@@ -96,9 +106,11 @@ The workflow has triggered Ansible Automation Platform. Let's watch the provisio
 
 Phase one — infrastructure. Ansible generates an ephemeral SSH key pair for bootstrap access. It creates the KubeVirt virtual machine with cloud-init. It waits for the VM to boot. Then it creates the SSH service, the HTTP service, and the OpenShift route with TLS edge termination. And it waits for SSH to become reachable.
 
-Phase two — configuration. Ansible SSHes into the VM using that ephemeral key and creates a dedicated service account. Then it hardens the VM — it sets a random 24-character password, locks the root account, removes default sudo access, disables SSH password authentication, disables root login, and restarts sshd. After that, it installs Flask from PyPI, deploys the web application with a systemd service, verifies the app responds on port 80, and grants limited sudo — only systemctl restart and status for the webapp service. Finally, it injects the developer's SSH public key and removes the bootstrap key. [PAUSE]
+Phase two — configuration. Ansible SSHes into the VM using that ephemeral key and creates a dedicated service account. Then it hardens the VM — it sets a random 24-character password, locks the root account, removes default sudo access, disables SSH password authentication, disables root login, and restarts sshd. After that, it installs Flask from PyPI, deploys the web application with a systemd service, verifies the app responds on port 80, and grants limited sudo — only systemctl restart and status for the webapp service. Finally, it injects solnarchitect's SSH public key and removes the bootstrap key. [PAUSE]
 
 Let me highlight the security model. There is no password anywhere in the VM spec — cloud-init only has the ephemeral public key. SSH password authentication is disabled. Root is locked. The cloud-init default sudo is removed. The service account gets least-privilege sudo — only for managing the webapp service. And the random password is stored only in AAP job artifacts — invisible to anyone with OpenShift access.
+
+All of this was defined by platowner in the Ansible playbook. It runs the same way every single time.
 
 ---
 
@@ -122,7 +134,7 @@ This page shows the service account, its allowed sudo commands — systemctl res
 
 **[Navigate to the parent component — RHEL VM Provisioning Service]**
 
-Now let's see the platform engineer's view. This is platowner's single pane of glass. The ServiceNow tab shows all incidents across all VMs. The Kubernetes tab shows all VMs provisioned by this service. And the Workflows tab shows all orchestrator workflow runs.
+Now let's see platowner's view. This is the single pane of glass for the entire service. The ServiceNow tab shows all incidents across all VMs. The Kubernetes tab shows all VMs provisioned by this service. And the Workflows tab shows all orchestrator workflow runs. platowner can see every request, every provisioned VM, every audit record — all in one place.
 
 **[Show ServiceNow — records auto-closed]**
 
@@ -134,7 +146,7 @@ Back in ServiceNow — the incident is resolved with close notes including the V
 
 **[Log in as user1 / solnarchitect]**
 
-Let's talk about access control. This is solnarchitect — the solutions architect. Look at the catalog. They see entities owned by the Application Team — their VMs, their resources. They can also see components, templates, systems, and other shared entity types. They can run templates and view their workflow runs.
+Let's talk about access control. This is solnarchitect — the infrastructure solutions architect. Look at the catalog. They see entities owned by the Application Team — their VMs, their resources. They can also see components, templates, systems, and other shared entity types in read-only mode. They can run templates and view their workflow runs.
 
 **[Point out what's NOT visible]**
 
@@ -146,19 +158,21 @@ Now compare with platowner — the platform owner. platowner sees everything. Al
 
 **[Show the RBAC page briefly]**
 
-The developer role gets conditional catalog access — they see entities owned by their group plus all shared kinds. The admin role gets full access to everything. [PAUSE]
+The role named "developer" gets conditional catalog access — users in that role see entities owned by their group plus all shared kinds. The admin role gets full access to everything. These are enforced at the API level — not just UI filtering. [PAUSE]
 
-This isn't just a visibility demo. This is real RBAC enforcement — conditional policies evaluated at the API level, not just UI filtering.
+This means platowner controls exactly what each team can see and do, and that enforcement is consistent whether you're using the UI, the API, or any plugin.
 
 ---
 
-## Closing (30 seconds)
+## Closing (45 seconds)
 
-So let's recap what just happened. A developer filled out a single form. The platform handled everything — governance through ServiceNow, approval, VM provisioning on OpenShift Virtualization, application deployment, security hardening, catalog registration, and record closure. All automated, all auditable, all repeatable.
+So let's step back and look at what just happened. [PAUSE]
 
-And this is a reusable pattern. The same template-workflow-playbook model extends to databases, middleware, Kubernetes namespaces — any infrastructure service the organization wants to offer as self-service. [PAUSE]
+An infrastructure solutions architect needed a VM. They filled out one form — in one tool. The platform handled everything else. Governance through ServiceNow. Manager approval. VM provisioning on OpenShift Virtualization. Application deployment. Security hardening. Catalog registration. Record closure. All automated, all auditable, all repeatable.
 
-Zero to prod. Zero friction. That's the power of an Internal Developer Platform built on Red Hat.
+And here's what matters most for the customer — this is a reusable pattern. The same template-workflow-playbook model extends to databases, middleware, Kubernetes namespaces, storage — any infrastructure service you want to offer as self-service. The platform owner defines the golden path once, and every team in the organization can consume it.
+
+That's what Red Hat Developer Hub enables. One portal. Self-service infrastructure. Full governance. Zero friction. [PAUSE]
 
 ---
 
@@ -166,15 +180,15 @@ Zero to prod. Zero friction. That's the power of an Internal Developer Platform 
 
 | Section | Duration |
 |---------|----------|
-| Opening | 0:30 |
+| Opening — What is RHDH? | 1:00 |
 | Act 1 — Everything as Code | 2:00 |
-| Act 2 — Developer Experience | 2:00 |
+| Act 2 — Self-Service Experience | 2:00 |
 | Act 3 — Governance | 1:30 |
 | Act 4 — Provisioning | 2:00 |
 | Act 5 — The Result | 2:00 |
 | Act 6 — RBAC | 1:30 |
-| Closing | 0:30 |
-| **Total** | **~12 minutes** |
+| Closing | 0:45 |
+| **Total** | **~13 minutes** |
 
 ## Quick Reference — URLs and Credentials
 
@@ -185,7 +199,7 @@ Zero to prod. Zero friction. That's the power of an Internal Developer Platform 
 | ServiceNow | `https://dev423121.service-now.com` |
 | Git Repo | `https://github.com/sumiranchugh/idp` |
 
-| User | Display Name | Role |
-|------|-------------|------|
-| user1 | solnarchitect | developer (Application Team) |
-| user2 | platowner | admin + rbac_admin (Platform Team) |
+| User | Display Name | Role | Persona |
+|------|-------------|------|---------|
+| user1 | solnarchitect | developer | Infrastructure Solutions Architect — requests VMs |
+| user2 | platowner | admin + rbac_admin | Platform Owner — designs and manages the golden path |
