@@ -6,24 +6,24 @@
 
 ## What is Red Hat Developer Hub?
 
-In most enterprises, requesting infrastructure means filing tickets across multiple systems — ServiceNow for approvals, a separate request to the infra team for provisioning, emails for follow-up, and no single place to track the result. The tools exist (ServiceNow, Ansible, OpenShift), but they're siloed. Nobody has a unified view of the entire lifecycle from request to running workload.
+You already have ServiceNow for change management, Ansible for automation, and OpenShift for infrastructure. Each one works. The gap is that they're disconnected — an approved change request in ServiceNow doesn't automatically trigger Ansible provisioning, and neither system gives the requestor a single place to track the full lifecycle from request to running workload.
 
-Red Hat Developer Hub (RHDH) is Red Hat's supported distribution of [Backstage](https://backstage.io) — an internal portal that gives teams a **single self-service interface** to request, track, and manage infrastructure and services. It provides:
+Red Hat Developer Hub (RHDH) is Red Hat's supported distribution of [Backstage](https://backstage.io) — an internal portal that **connects your existing tools** into a single self-service interface. It provides:
 
 - **Software Catalog** — A single place to discover and manage all your software assets (services, APIs, VMs, infrastructure)
-- **Software Templates** — Self-service forms that teams use to provision infrastructure and create projects following organizational standards ("golden paths")
+- **Software Templates** — Self-service forms that create ServiceNow records, trigger Ansible automation, and register results — all through your existing governance
 - **Plugin Ecosystem** — Extensible with plugins for ServiceNow, Ansible, Kubernetes, ArgoCD, and more — all surfaced in one UI
 - **RBAC** — Role-based access control so each team sees what they need and platform owners control what's allowed
 
-Think of it as the single pane of glass where teams go to get things done — without needing to learn the underlying tools (ServiceNow, Ansible, OpenShift) or coordinate across multiple teams.
+Nothing changes about your ServiceNow process or your approval workflows. What changes is that the handoff from "approved" to "done" becomes automated, auditable, and visible in one place.
 
 ---
 
 ## The Story
 
-Meet **solnarchitect** (user1), an infrastructure solutions architect on the Application Team. They need a RHEL virtual machine to host a Flask-based microservice. Traditionally, this would mean filing tickets across multiple systems, waiting for approvals over email, coordinating with the infrastructure team for provisioning, and then manually setting up the application, service accounts, and access controls. A process that takes days or weeks.
+Meet **solnarchitect** (user1), an infrastructure solutions architect on the Application Team. They need a RHEL virtual machine to host a Flask-based microservice. Today, that means creating an incident in ServiceNow, filing a change request, waiting for approval, then coordinating with the infrastructure team for manual provisioning. After the VM is up, someone has to go back and close the ServiceNow records. The governance works — but the provisioning and lifecycle tracking are manual.
 
-Today, solnarchitect does it in minutes — through a single self-service request in Red Hat Developer Hub. The platform handles everything: governance, approval, provisioning, application deployment, security hardening, and catalog registration — all automated, auditable, and repeatable.
+With Developer Hub, solnarchitect fills out one form. ServiceNow handles approval the way it always does. Everything after the approval — provisioning, application deployment, security hardening, catalog registration, and closing the ServiceNow records — happens automatically.
 
 **platowner** (user2) is the Platform Owner who designed and manages this self-service golden path — the templates, workflows, playbooks, and RBAC policies that make it all work. platowner sees everything — all workflow runs, all provisioned infrastructure, all ServiceNow records — from a single pane of glass. solnarchitect only sees what's relevant to their team.
 
@@ -75,7 +75,7 @@ Before solnarchitect ever clicks a button, platowner has defined the entire serv
 
    URL: `https://backstage-developer-hub-developer-hub.apps.cluster-z5jjn.dyn.redhatworkshops.io`
 
-   solnarchitect authenticates via Keycloak SSO — the same identity provider the organization already uses. This is the only tool they need to touch.
+   solnarchitect authenticates via Keycloak SSO — the same identity provider the organization already uses. This is the only interface they touch — they don't need to open ServiceNow to create an incident or file a change request manually.
 
 2. **Navigate to Create > Templates**
 
@@ -124,26 +124,28 @@ Before solnarchitect ever clicks a button, platowner has defined the entire serv
 
 ### Key message
 
-> "solnarchitect filled out one form in one portal. Behind the scenes, the platform created two ServiceNow records, initiated the approval process, and started the orchestration workflow. They didn't need to log into ServiceNow, learn Ansible, or have OpenShift access. They just asked for what they needed."
+> "solnarchitect filled out one form in one portal. The platform created the ServiceNow incident and change request using your existing ServiceNow instance, initiated the approval process through your existing change management workflow, and started the orchestration. solnarchitect didn't need to open ServiceNow, learn Ansible, or have OpenShift access — they just asked for what they needed."
 
 ---
 
-## Act 3: Governance — ServiceNow Approval
+## Act 3: Your Existing Approval Process
 
 > **Capability: ServiceNow Approval Integration**
 
-The workflow is now paused, waiting for manager approval. No provisioning happens until governance controls are satisfied.
+The workflow is now paused, waiting for manager approval. No provisioning happens until your change management process is satisfied.
 
 ### What to show
 
 1. **Open ServiceNow** — `https://dev423121.service-now.com`
 
-   Navigate to the Change Request. Show:
+   Navigate to the Change Request. It looks exactly like any other CR in your instance — because it is one. Show:
    - All VM parameters captured in custom fields (`u_vm_name`, `u_vm_cpus`, etc.)
    - The business justification from solnarchitect's request
    - Assignment to the **Application Development** group
    - State: **Assess** with **Approve / Reject** buttons visible
    - The linked Incident record for audit trail
+   
+   > Your change managers review and approve this CR exactly the way they review any other change request. Nothing new to learn.
 
 2. **Show the Orchestrator in RHDH** (as platowner/user2)
 
@@ -161,7 +163,7 @@ The workflow is now paused, waiting for manager approval. No provisioning happen
 
 ### Key message
 
-> "The approval happened entirely within ServiceNow — the system the operations team already uses. No new tools to learn. The workflow waited patiently for approval, and resumed automatically the moment it was granted. The entire approval chain is recorded in ServiceNow for audit and compliance."
+> "Your approval process stays in ServiceNow where it belongs — nothing changes for your change managers. The workflow waited patiently for approval, and resumed automatically the moment it was granted via a CloudEvent callback. The entire approval chain is recorded in ServiceNow exactly as it would be for any other change request."
 
 ---
 
@@ -268,10 +270,12 @@ The workflow has completed. The VM is registered in the catalog. ServiceNow reco
    - The Incident is **Resolved** with close notes: "VM demo-vm-01 provisioned successfully. Status: Running. SSH: ssh cloud-user@..."
    - The Change Request is **Closed** with close code: "successful"
    - Full audit trail: every state transition recorded
+   
+   > This is what usually requires a manual follow-up — someone remembering to go back and close the ticket. Here it happens automatically, with accurate details, the moment the workflow completes.
 
 ### Key message
 
-> "The solutions architect got their VM. The platform owner sees everything from one dashboard. ServiceNow has the complete audit trail. And every step was automated, governed, and repeatable. This isn't a one-off — this is a reusable pattern for any service the organization wants to offer."
+> "The solutions architect got their VM. The platform owner sees everything from one dashboard. ServiceNow has the complete audit trail — incident resolved, change request closed, every state transition recorded. Nothing changed about your ServiceNow process. What changed is that the handoff from 'approved' to 'done' is now automated, auditable, and visible in one place."
 
 ---
 
@@ -381,10 +385,10 @@ ServiceNow ──────────────── Incident resolved, C
 
 ## Beyond the PoC — What's Next
 
-This demo establishes a **reusable pattern** for platform engineering:
+This demo establishes a **reusable pattern** that extends your existing ServiceNow and Ansible investments:
 
-- **Additional service offerings** — The same template/workflow/playbook pattern extends to databases, middleware, Kubernetes namespaces, or any infrastructure service
+- **Additional service offerings** — The same template/workflow/playbook pattern extends to databases, middleware, Kubernetes namespaces, or any infrastructure service — each one creating and closing ServiceNow records through your existing change management process
 - **Multi-cluster** — The configuration is templatized with `__PLACEHOLDER__` tokens and a `deploy.sh` script — switching clusters requires only updating a `.env` file
 - **Enterprise identity** — Keycloak integration supports LDAP/AD federation for production SSO
-- **Cost tracking** — ServiceNow records can feed into chargeback/showback models
-- **Compliance** — Every action is logged in ServiceNow, AAP, and Git — ready for audit
+- **Cost tracking** — ServiceNow records can feed into your existing chargeback/showback models
+- **Compliance** — Every action is logged in ServiceNow, AAP, and Git — the same audit trail your compliance team already uses, now populated automatically
