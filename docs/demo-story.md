@@ -19,11 +19,11 @@ Think of it as the "internal developer portal" — the single pane of glass wher
 
 ## The Story
 
-Meet **Sarah** (user1), a developer on the Application Team. She needs a RHEL virtual machine to run a Flask-based microservice. Traditionally, this would mean filing tickets, waiting for approvals over email, coordinating with the infrastructure team for VM provisioning, and then manually setting up the application, service accounts, and access controls. A process that takes days or weeks.
+Meet **solnarchitect** (user1), a solutions architect on the Application Team. They need a RHEL virtual machine to run a Flask-based microservice. Traditionally, this would mean filing tickets, waiting for approvals over email, coordinating with the infrastructure team for VM provisioning, and then manually setting up the application, service accounts, and access controls. A process that takes days or weeks.
 
-Today, Sarah does it in minutes — through a single self-service request in Red Hat Developer Hub. The platform handles everything: governance, approval, provisioning, application deployment, security hardening, and catalog registration — all automated, auditable, and repeatable.
+Today, solnarchitect does it in minutes — through a single self-service request in Red Hat Developer Hub. The platform handles everything: governance, approval, provisioning, application deployment, security hardening, and catalog registration — all automated, auditable, and repeatable.
 
-**Alex** (user2) is the Platform Engineer who built and manages this golden path. Alex sees everything — all workflow runs, all provisioned infrastructure, all ServiceNow records — from a single pane of glass. Sarah only sees what's relevant to her team.
+**platowner** (user2) is the Platform Owner who built and manages this golden path. platowner sees everything — all workflow runs, all provisioned infrastructure, all ServiceNow records — from a single pane of glass. solnarchitect only sees what's relevant to their team.
 
 ---
 
@@ -31,7 +31,7 @@ Today, Sarah does it in minutes — through a single self-service request in Red
 
 > **Capability: Infrastructure and Application Definitions as Code**
 
-Before Sarah ever clicks a button, Alex has defined the entire service offering as code, stored in Git, version-controlled and auditable.
+Before solnarchitect ever clicks a button, platowner has defined the entire service offering as code, stored in Git, version-controlled and auditable.
 
 ### What to show
 
@@ -69,17 +69,17 @@ Before Sarah ever clicks a button, Alex has defined the entire service offering 
 
 ### What to show
 
-1. **Log in as Sarah (user1)** at the RHDH portal
+1. **Log in as solnarchitect (user1)** at the RHDH portal
 
    URL: `https://backstage-developer-hub-developer-hub.apps.cluster-z5jjn.dyn.redhatworkshops.io`
 
-   Sarah authenticates via Keycloak SSO — the same identity provider the organization already uses.
+   solnarchitect authenticates via Keycloak SSO — the same identity provider the organization already uses.
 
 2. **Navigate to Create > Templates**
 
-   Sarah sees the template catalog. Find **"Run Flask App on RHEL VM"**.
+   solnarchitect sees the template catalog. Find **"Run Flask App on RHEL VM"**.
 
-   > Point out: Sarah sees only what she's authorized to see. The RBAC policy gives her the `developer` role — she can run templates and view the catalog, but she cannot manage RBAC or delete entities.
+   > Point out: solnarchitect sees only what they're authorized to see. The RBAC policy gives them the `developer` role — they can run templates and view the catalog, but they cannot manage RBAC or delete entities.
 
 3. **Fill out the request form** (3 pages):
 
@@ -114,7 +114,7 @@ Before Sarah ever clicks a button, Alex has defined the entire service offering 
 
 5. **Show the output page**
 
-   Sarah gets:
+   solnarchitect gets:
    - A link to **track the workflow** in the Orchestrator
    - A link to the **ServiceNow Incident** (tracking record)
    - A link to the **ServiceNow Change Request** (approval record)
@@ -122,7 +122,7 @@ Before Sarah ever clicks a button, Alex has defined the entire service offering 
 
 ### Key message
 
-> "Sarah filled out one form. Behind the scenes, the platform created two ServiceNow records, initiated the approval process, and started the orchestration workflow. She didn't need to know about ServiceNow, Ansible, or OpenShift. She just asked for what she needed."
+> "solnarchitect filled out one form. Behind the scenes, the platform created two ServiceNow records, initiated the approval process, and started the orchestration workflow. They didn't need to know about ServiceNow, Ansible, or OpenShift. They just asked for what they needed."
 
 ---
 
@@ -138,12 +138,12 @@ The workflow is now paused, waiting for manager approval. No provisioning happen
 
    Navigate to the Change Request. Show:
    - All VM parameters captured in custom fields (`u_vm_name`, `u_vm_cpus`, etc.)
-   - The business justification from Sarah's request
+   - The business justification from solnarchitect's request
    - Assignment to the **Application Development** group
    - State: **Assess** with **Approve / Reject** buttons visible
    - The linked Incident record for audit trail
 
-2. **Show the Orchestrator in RHDH** (as Alex/user2)
+2. **Show the Orchestrator in RHDH** (as platowner/user2)
 
    Navigate to the Orchestrator page. The workflow instance shows status: **"Pending Manager Approval"**. The workflow is in a callback state — it's not polling. It will resume only when ServiceNow sends a CloudEvent.
 
@@ -201,7 +201,7 @@ The workflow has triggered Ansible Automation Platform. The provisioning playboo
    - Deploys the web application with systemd service
    - Verifies the application responds on port 80
    - Grants limited sudo: only `systemctl restart/status webapp` and `journalctl`
-   - Injects Sarah's SSH public key into the service account
+   - Injects solnarchitect's SSH public key into the service account
 
 2. **Show the security model** (talking point, or show `oc get vm -o yaml`):
 
@@ -254,7 +254,7 @@ The workflow has completed. The VM is registered in the catalog. ServiceNow reco
 
    Navigate to **RHEL VM Provisioning Service** (`rhel-vm-provisioning` component).
 
-   This is Alex's view. Show:
+   This is platowner's view. Show:
    - **ServiceNow tab** — ALL incidents across ALL VMs, aggregated. Shows both open and resolved.
    - **Kubernetes tab** — ALL VMs provisioned by this service (matched by label `provisioned-by=rhel-vm-provisioning`)
    - **Topology tab** — Visual map of all VM workloads
@@ -269,7 +269,7 @@ The workflow has completed. The VM is registered in the catalog. ServiceNow reco
 
 ### Key message
 
-> "The developer got her VM. The platform engineer sees everything from one dashboard. ServiceNow has the complete audit trail. And every step was automated, governed, and repeatable. This isn't a one-off — this is a reusable pattern for any service the organization wants to offer."
+> "The developer got their VM. The platform owner sees everything from one dashboard. ServiceNow has the complete audit trail. And every step was automated, governed, and repeatable. This isn't a one-off — this is a reusable pattern for any service the organization wants to offer."
 
 ---
 
@@ -279,18 +279,18 @@ The workflow has completed. The VM is registered in the catalog. ServiceNow reco
 
 ### What to show
 
-1. **Log in as Sarah (user1)** — show what she sees:
-   - The Software Catalog shows only entities **owned by her team** (application-team) — her VMs, her resources
-   - She does **not** see the parent "RHEL VM Provisioning Service" component (owned by platform-team)
-   - She can run templates and view her own workflow runs
-   - She cannot access the RBAC admin page
+1. **Log in as solnarchitect (user1)** — show what they see:
+   - The Software Catalog shows only entities **owned by their team** (application-team) — their VMs, their resources
+   - They can also see shared kinds (Components, Templates, Systems, etc.) in read-only mode
+   - They can run templates and view their own workflow runs
+   - They cannot access the RBAC admin page
 
-2. **Log in as Alex (user2)** — show the difference:
-   - Alex sees **everything** in the catalog — all entities across all teams
+2. **Log in as platowner (user2)** — show the difference:
+   - platowner sees **everything** in the catalog — all entities across all teams
    - The parent component shows all ServiceNow tickets, all VMs, all workflow runs
    - The **Orchestrator** page shows all workflow instances across all users
-   - The **RBAC** page in the sidebar lets Alex manage roles and permissions
-   - Alex can refresh, delete, and manage catalog entities
+   - The **RBAC** page in the sidebar lets platowner manage roles and permissions
+   - platowner can refresh, delete, and manage catalog entities
 
 3. **RBAC page** — Show the role assignments:
    - `developer` role: conditional catalog access (own group only), scaffolder use, orchestrator use
@@ -303,7 +303,7 @@ The workflow has completed. The VM is registered in the catalog. ServiceNow reco
 ## Technical Architecture
 
 ```
-Developer (Sarah)
+Solutions Architect (solnarchitect)
     |
     v
 Red Hat Developer Hub ──── Keycloak SSO (authentication)
@@ -371,8 +371,8 @@ ServiceNow ──────────────── Incident resolved, C
 
 | User | Role | Credentials |
 |------|------|-------------|
-| user1 (Sarah — Developer) | developer | Keycloak SSO |
-| user2 (Alex — Platform Admin) | admin + rbac_admin | Keycloak SSO |
+| user1 (solnarchitect — Solutions Architect) | developer | Keycloak SSO |
+| user2 (platowner — Platform Owner) | admin + rbac_admin | Keycloak SSO |
 
 ---
 
