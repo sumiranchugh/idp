@@ -6,26 +6,26 @@
 
 ## What is Red Hat Developer Hub?
 
-You already have ServiceNow for change management, Ansible for automation, and OpenShift for infrastructure. Each one works. The gap is that they're disconnected — an approved change request in ServiceNow doesn't automatically trigger Ansible provisioning, and neither system gives the requestor a single place to track the full lifecycle from request to running workload.
+You have ServiceNow for change management, Ansible for automation, and OpenShift for infrastructure. Each one works. But they work in silos — an approved change request in ServiceNow doesn't automatically trigger Ansible provisioning. When a VM is ready, someone manually updates the CMDB. And no single console shows the full lifecycle from request to running workload. The tools are automated individually, but the end-to-end process is not orchestrated.
 
-Red Hat Developer Hub (RHDH) is Red Hat's supported distribution of [Backstage](https://backstage.io) — an internal portal that **connects your existing tools** into a single self-service interface. It provides:
+Red Hat Developer Hub (RHDH) is Red Hat's supported distribution of [Backstage](https://backstage.io) — an internal portal that serves as the **single pane of glass** for all software assets and the **orchestration layer** that ties your existing tools into governed, self-service golden paths. It provides:
 
-- **Software Catalog** — A single place to discover and manage all your software assets (services, APIs, VMs, infrastructure)
-- **Software Templates** — Self-service forms that create ServiceNow records, trigger Ansible automation, and register results — all through your existing governance
+- **Software Catalog** — A single place to discover and manage all your software assets (services, APIs, VMs, infrastructure) with live data from Kubernetes, ServiceNow, and other systems unified on each entity page
+- **Software Templates** — Self-service forms with built-in guardrails (validation, required fields, constrained options) that orchestrate across ServiceNow, Ansible, and OpenShift in a single pipeline
 - **Plugin Ecosystem** — Extensible with plugins for ServiceNow, Ansible, Kubernetes, ArgoCD, and more — all surfaced in one UI
-- **RBAC** — Role-based access control so each team sees what they need and platform owners control what's allowed
+- **RBAC** — Role-based access control so each team sees exactly what they should and platform owners govern the boundaries
 
-Nothing changes about your ServiceNow process or your approval workflows. What changes is that the handoff from "approved" to "done" becomes automated, auditable, and visible in one place.
+Your tools don't change. Your processes don't change. What Developer Hub adds is the orchestration between them, the catalog that unifies them, and the guardrails that govern them.
 
 ---
 
 ## The Story
 
-Meet **solnarchitect** (user1), an infrastructure solutions architect on the Application Team. They need a RHEL virtual machine to host a Flask-based microservice. Today, that means creating an incident in ServiceNow, filing a change request, waiting for approval, then coordinating with the infrastructure team for manual provisioning. After the VM is up, someone has to go back and close the ServiceNow records. The governance works — but the provisioning and lifecycle tracking are manual.
+Meet **solnarchitect** (user1), an infrastructure solutions architect on the Application Team. They need a RHEL virtual machine to host a Flask-based microservice. Today, that means opening ServiceNow to file a ticket, waiting for a change manager to approve it, then coordinating with the infra team to run an Ansible job, and finally going back to ServiceNow to close the records. Each tool does its part — but the handoffs between them are manual, and no single console shows the full picture.
 
-With Developer Hub, solnarchitect fills out one form. ServiceNow handles approval the way it always does. Everything after the approval — provisioning, application deployment, security hardening, catalog registration, and closing the ServiceNow records — happens automatically.
+With Developer Hub, solnarchitect fills out one form — with built-in guardrails — and the platform orchestrates everything end to end: ServiceNow approval, Ansible provisioning, security hardening, catalog registration, and ServiceNow closure.
 
-**platowner** (user2) is the Platform Owner who designed and manages this self-service golden path — the templates, workflows, playbooks, and RBAC policies that make it all work. platowner sees everything — all workflow runs, all provisioned infrastructure, all ServiceNow records — from a single pane of glass. solnarchitect only sees what's relevant to their team.
+**platowner** (user2) is the Platform Owner who designed and manages this golden path — the templates, workflows, playbooks, RBAC policies, and guardrails that make it all work. Developer Hub is platowner's single pane of glass: all provisioned assets, all workflow runs, all ServiceNow records, all Kubernetes state — in one catalog. solnarchitect only sees what's relevant to their team.
 
 ---
 
@@ -75,7 +75,7 @@ Before solnarchitect ever clicks a button, platowner has defined the entire serv
 
    URL: `https://backstage-developer-hub-developer-hub.apps.cluster-z5jjn.dyn.redhatworkshops.io`
 
-   solnarchitect authenticates via Keycloak SSO — the same identity provider the organization already uses. This is the only interface they touch — they don't need to open ServiceNow to create an incident or file a change request manually.
+   solnarchitect authenticates via Keycloak SSO. Developer Hub is the only interface they touch — one portal instead of navigating between ServiceNow, Ansible, and the OpenShift console.
 
 2. **Navigate to Create > Templates**
 
@@ -124,28 +124,28 @@ Before solnarchitect ever clicks a button, platowner has defined the entire serv
 
 ### Key message
 
-> "solnarchitect filled out one form in one portal. The platform created the ServiceNow incident and change request using your existing ServiceNow instance, initiated the approval process through your existing change management workflow, and started the orchestration. solnarchitect didn't need to open ServiceNow, learn Ansible, or have OpenShift access — they just asked for what they needed."
+> "One form in one portal. Developer Hub orchestrated four actions across two systems — ServiceNow records created, approval workflow initiated, orchestrator started. solnarchitect didn't open ServiceNow, log into Ansible, or touch the OpenShift console. The golden path guided them through a governed request with guardrails at every step."
 
 ---
 
-## Act 3: Your Existing Approval Process
+## Act 3: Governance Built In
 
-> **Capability: ServiceNow Approval Integration**
+> **Capability: Orchestrated Approval with Guardrails**
 
-The workflow is now paused, waiting for manager approval. No provisioning happens until your change management process is satisfied.
+The workflow is now paused, waiting for manager approval. This is a guardrail — no provisioning happens until governance is satisfied. The pipeline enforces this; it's not optional or bypassable.
 
 ### What to show
 
 1. **Open ServiceNow** — `https://dev423121.service-now.com`
 
-   Navigate to the Change Request. It looks exactly like any other CR in your instance — because it is one. Show:
+   Navigate to the Change Request. Show:
    - All VM parameters captured in custom fields (`u_vm_name`, `u_vm_cpus`, etc.)
-   - The business justification from solnarchitect's request
+   - The business justification from solnarchitect's request — the required field from the template
    - Assignment to the **Application Development** group
    - State: **Assess** with **Approve / Reject** buttons visible
    - The linked Incident record for audit trail
    
-   > Your change managers review and approve this CR exactly the way they review any other change request. Nothing new to learn.
+   > Change managers work in ServiceNow the way they always do. Developer Hub orchestrated the CR creation and will pick up the approval automatically — but the governance step itself is unchanged.
 
 2. **Show the Orchestrator in RHDH** (as platowner/user2)
 
@@ -163,7 +163,7 @@ The workflow is now paused, waiting for manager approval. No provisioning happen
 
 ### Key message
 
-> "Your approval process stays in ServiceNow where it belongs — nothing changes for your change managers. The workflow waited patiently for approval, and resumed automatically the moment it was granted via a CloudEvent callback. The entire approval chain is recorded in ServiceNow exactly as it would be for any other change request."
+> "This is the orchestration in action. The approval happens in ServiceNow. Developer Hub's workflow engine picks up that approval via a CloudEvent callback and automatically triggers the next stage — Ansible provisioning. No manual handoff. No one copying a ticket number between systems. The pipeline connects the tools that were previously siloed."
 
 ---
 
@@ -221,15 +221,15 @@ The workflow has triggered Ansible Automation Platform. The provisioning playboo
 
 ### Key message
 
-> "In under 10 minutes, Ansible provisioned a RHEL VM, deployed a Flask application, created a dedicated service account, hardened the security posture, and granted least-privilege access — all without any human intervention. The password is random per VM and stored only in AAP, invisible to anyone with OpenShift access."
+> "Every security control — locked root, disabled password SSH, least-privilege sudo, random passwords — is a guardrail baked into the golden path. It's not a checklist someone follows manually. It's enforced by the playbook every time. The platform owner defines the guardrails once; every VM provisioned through this golden path inherits them automatically."
 
 ---
 
-## Act 5: The Result — Everything in One Place
+## Act 5: The Single Pane of Glass
 
-> **Capability: Service Catalog + Lifecycle Tracking**
+> **Capability: Unified Software Catalog + Lifecycle Tracking**
 
-The workflow has completed. The VM is registered in the catalog. ServiceNow records are closed.
+The workflow has completed. The VM is registered in the catalog. ServiceNow records are closed. This is where the single pane of glass comes together.
 
 ### What to show
 
@@ -237,11 +237,13 @@ The workflow has completed. The VM is registered in the catalog. ServiceNow reco
 
    Navigate to the catalog. A new Resource entity **"RHEL VM: demo-vm-01"** has appeared — it was created automatically by the workflow (pushed to Git, registered in Backstage).
 
-   Show the entity page tabs:
+   Show the entity page tabs — this is where data from multiple siloed systems is unified:
    - **Overview** — VM details, links to the live application, health check, access control page
-   - **Kubernetes** — Shows the VirtualMachine and VirtualMachineInstance custom resources live from OpenShift
+   - **Kubernetes** — Live VirtualMachine and VirtualMachineInstance custom resources from OpenShift (data that was previously only in the OpenShift console)
    - **Topology** — Visual topology view of the VM and its services
-   - **ServiceNow** — The incident record linked to this VM
+   - **ServiceNow** — The incident record linked to this VM (data that was previously only in ServiceNow)
+   
+   > Before Developer Hub, you'd check the OpenShift console for VM status, ServiceNow for the ticket, and SSH into the box to verify the app. Now it's one entity page.
 
 2. **Click the Application link** — opens the live Flask app
 
@@ -254,15 +256,17 @@ The workflow has completed. The VM is registered in the catalog. ServiceNow reco
 
    Click **Health Check** (`/health`) — returns JSON: `{"status": "healthy", "app": "demo-vm-01"}`
 
-3. **The parent component — single pane of glass**
+3. **The parent component — platowner's single pane of glass**
 
    Navigate to **RHEL VM Provisioning Service** (`rhel-vm-provisioning` component).
 
-   This is platowner's view. Show:
-   - **ServiceNow tab** — ALL incidents across ALL VMs, aggregated. Shows both open and resolved.
-   - **Kubernetes tab** — ALL VMs provisioned by this service (matched by label `provisioned-by=rhel-vm-provisioning`)
+   This is platowner's unified view across all the siloed systems. Show:
+   - **ServiceNow tab** — ALL incidents across ALL VMs, aggregated (ServiceNow data surfaced in Developer Hub)
+   - **Kubernetes tab** — ALL VMs provisioned by this service (OpenShift data surfaced in Developer Hub)
    - **Topology tab** — Visual map of all VM workloads
-   - **Workflows tab** — ALL orchestrator workflow runs (only visible here, not on individual VM entities)
+   - **Workflows tab** — ALL orchestrator workflow runs (SonataFlow data surfaced in Developer Hub)
+   
+   > One component page. ServiceNow records, Kubernetes state, workflow history — all the data that lives in separate consoles, unified here.
 
 4. **ServiceNow — records auto-closed**
 
@@ -271,11 +275,11 @@ The workflow has completed. The VM is registered in the catalog. ServiceNow reco
    - The Change Request is **Closed** with close code: "successful"
    - Full audit trail: every state transition recorded
    
-   > This is what usually requires a manual follow-up — someone remembering to go back and close the ticket. Here it happens automatically, with accurate details, the moment the workflow completes.
+   > The orchestration handles the full lifecycle — including closing the loop in ServiceNow. No manual follow-up to close the ticket. The pipeline does it.
 
 ### Key message
 
-> "The solutions architect got their VM. The platform owner sees everything from one dashboard. ServiceNow has the complete audit trail — incident resolved, change request closed, every state transition recorded. Nothing changed about your ServiceNow process. What changed is that the handoff from 'approved' to 'done' is now automated, auditable, and visible in one place."
+> "This is the single pane of glass. Kubernetes state, ServiceNow records, application health, workflow history — data from every siloed system, unified in one catalog. The solutions architect sees their assets. The platform owner sees everything. And the full lifecycle — from request through approval, provisioning, and closure — was orchestrated end to end without a manual handoff between any two systems."
 
 ---
 
@@ -385,10 +389,10 @@ ServiceNow ──────────────── Incident resolved, C
 
 ## Beyond the PoC — What's Next
 
-This demo establishes a **reusable pattern** that extends your existing ServiceNow and Ansible investments:
+This demo establishes a **reusable pattern** — the same golden-path architecture (template + workflow + playbook + catalog entity + RBAC) extends to any service offering:
 
-- **Additional service offerings** — The same template/workflow/playbook pattern extends to databases, middleware, Kubernetes namespaces, or any infrastructure service — each one creating and closing ServiceNow records through your existing change management process
+- **Additional service offerings** — Databases, middleware, Kubernetes namespaces, or any infrastructure service. Each one gets the same orchestrated pipeline, the same guardrails, and the same catalog visibility
 - **Multi-cluster** — The configuration is templatized with `__PLACEHOLDER__` tokens and a `deploy.sh` script — switching clusters requires only updating a `.env` file
 - **Enterprise identity** — Keycloak integration supports LDAP/AD federation for production SSO
-- **Cost tracking** — ServiceNow records can feed into your existing chargeback/showback models
-- **Compliance** — Every action is logged in ServiceNow, AAP, and Git — the same audit trail your compliance team already uses, now populated automatically
+- **Cost tracking** — ServiceNow records can feed into chargeback/showback models
+- **Compliance** — Every action is logged across ServiceNow, AAP, and Git — the orchestration ensures the audit trail is complete and current, not manually maintained

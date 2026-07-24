@@ -4,17 +4,19 @@
 
 ---
 
-## Opening — The Problem and the Portal (1 minute)
+## Opening — The Problem and the Portal (1.5 minutes)
 
-You already have ServiceNow. You already have change management, approval workflows, and audit trails. That side works. [PAUSE]
+You have the tools. ServiceNow for change management. Ansible for automation. OpenShift for infrastructure. Each one works. [PAUSE]
 
-The gap is what happens after the approval. Someone approves a change request in ServiceNow — and then what? A different team picks up the ticket, manually provisions a VM, manually configures it, manually updates ServiceNow when it's done. The requestor has no visibility. The approver has no feedback loop. And nobody has a single place to see the full lifecycle — from request, through approval, to running workload.
+But they work in silos. When someone needs a VM today, they file a ticket in ServiceNow. A change manager approves it — in ServiceNow. Then someone picks up that approval and manually kicks off an Ansible job. When the VM is ready, someone else updates the CMDB. And if you want to know the full status — from request to running workload — you're checking three or four different consoles and hoping the information is current.
 
-Red Hat Developer Hub closes that gap. It's an internal portal — Red Hat's supported distribution of Backstage — that connects your existing ServiceNow governance with automated provisioning. The requestor fills out one form. ServiceNow handles approval the way it always does. And everything after that — provisioning, configuration, security hardening, catalog registration, closing the ServiceNow records — happens automatically.
+The pieces are automated. But the end-to-end process is not orchestrated. There's no single place where a requestor can ask for infrastructure and track it through approval, provisioning, and into production. And there's no single place where a platform owner can see all provisioned assets, all workflow runs, and all governance records together.
 
-Your ServiceNow processes don't change. Your approvers keep working in ServiceNow. What changes is that the handoff from "approved" to "done" becomes instant and auditable. [PAUSE]
+That's what Red Hat Developer Hub solves. It's an internal portal — Red Hat's supported distribution of Backstage — that becomes the **single pane of glass** for all your software assets and the **orchestration layer** that ties your existing tools together into governed, self-service golden paths. [PAUSE]
 
-We have two personas today. **solnarchitect** is an infrastructure solutions architect who needs a RHEL VM. **platowner** is the platform owner who designed this self-service workflow — connecting Developer Hub, ServiceNow, Ansible, and OpenShift into a single golden path.
+Your tools don't change. Your processes don't change. What Developer Hub adds is the orchestration between them and a unified catalog of everything that gets provisioned — with full RBAC so each team sees exactly what they should.
+
+We have two personas today. **solnarchitect** is an infrastructure solutions architect who needs a RHEL VM. **platowner** is the platform owner who designed this golden path — connecting Developer Hub, ServiceNow, Ansible, and OpenShift into one orchestrated workflow with guardrails at every step.
 
 ---
 
@@ -22,21 +24,23 @@ We have two personas today. **solnarchitect** is an infrastructure solutions arc
 
 **[Show the GitHub repo: github.com/sumiranchugh/idp]**
 
-Before anyone fills out a form, platowner has defined the entire service offering as code. Let me walk you through what's in this repo.
+Before anyone fills out a form, platowner has defined the entire service offering as code. This is the golden path — and every guardrail is built in. Let me walk you through what's here.
 
 **[Point to the folder structure]**
 
-The `templates` folder has the Scaffolder templates — these define the self-service forms. The `workflows` folder has the SonataFlow orchestration — the pipeline that ties ServiceNow approval to Ansible provisioning. `ansible/playbooks` has the automation for VM creation and application deployment. `catalog` has the Backstage catalog entities. And `devhub` has the platform configuration — plugins, RBAC, secrets.
+The `templates` folder has the Scaffolder templates — these define the self-service forms with validation rules. The `workflows` folder has the SonataFlow orchestration — the engine that ties approval to provisioning to catalog registration in a single pipeline. `ansible/playbooks` has the automation. `catalog` has the Backstage catalog entities. And `devhub` has the platform configuration — plugins, RBAC, secrets.
 
 **[Open templates/request-vm-servicenow-template.yaml]**
 
-This is the user-facing template that platowner designed. It defines three pages of form fields with validation rules, and a four-step execution pipeline — create a ServiceNow incident, create a change request, move it to assessment, and start the orchestrator workflow. Notice — the template talks directly to your ServiceNow instance via the REST API. It creates the incident, the change request, and moves the CR to the Assess state so the Approve and Reject buttons are active for your change managers.
+This is the template platowner designed. It defines three pages of form fields with validation — regex on VM names, dropdown constraints on CPU and memory, a required business justification field. These are the guardrails. A requestor can't skip the justification. They can't name a VM with uppercase characters. The golden path enforces organizational standards at the point of request. [PAUSE]
+
+The template also defines a four-step execution pipeline — create a ServiceNow incident, create a change request, move it to assessment, and start the orchestrator workflow. One click from the user triggers a coordinated sequence across ServiceNow and SonataFlow.
 
 **[Open ansible/playbooks/create-rhel-vm.yml]**
 
-And this is the provisioning playbook. Two plays — the first creates the VM on OpenShift Virtualization with cloud-init, networking, and routes. The second SSHes into the VM, creates a service account, deploys a Flask app from PyPI, and hardens the security posture. Every parameter is configurable. Nothing is hardcoded. [PAUSE]
+And this is what runs after approval. Two plays — the first creates the VM on OpenShift Virtualization with cloud-init, networking, and routes. The second SSHes in, creates a service account, deploys a Flask app, and hardens the security posture. Every security control — locked root, disabled password SSH, least-privilege sudo — is enforced by the playbook, not left to the requestor. [PAUSE]
 
-The key point — everything lives in Git. The form, the ServiceNow integration, the approval-to-provisioning pipeline, the security controls. It's version-controlled, auditable, and repeatable. platowner can update any part of this workflow through a pull request.
+The key point: everything lives in Git. The self-service form, the orchestration pipeline, the provisioning logic, the security controls. platowner can update any guardrail through a pull request. It's version-controlled, auditable, and repeatable.
 
 ---
 
@@ -44,83 +48,85 @@ The key point — everything lives in Git. The form, the ServiceNow integration,
 
 **[Log in to RHDH as user1 / solnarchitect]**
 
-Now let's switch to the requestor's perspective. This is solnarchitect — an infrastructure solutions architect. They need a RHEL VM to host a microservice for their team. They've logged into Developer Hub through Keycloak SSO.
+Now let's see what this looks like for the requestor. This is solnarchitect — an infrastructure solutions architect. They need a RHEL VM to host a microservice. They've logged into Developer Hub through Keycloak SSO.
 
-Notice — this is the only interface solnarchitect touches. They don't open ServiceNow to create an incident. They don't file a change request manually. The portal does that for them — using your existing ServiceNow instance and your existing change management process.
+This is the only interface solnarchitect touches. One portal. They don't open ServiceNow. They don't log into Ansible. They don't touch the OpenShift console. Developer Hub orchestrates all of that behind the scenes.
 
 **[Navigate to Create > Templates > "Run Flask App on RHEL VM"]**
 
-solnarchitect sees the template catalog. Let's find "Run Flask App on RHEL VM" and click Choose.
+solnarchitect sees the template catalog — only the templates they're authorized to use. Let's click Choose.
 
 **[Fill out Page 1 — VM Configuration]**
 
-We name the VM, pick the namespace, choose RHEL 9, set CPU, memory, and disk size. Notice the validation — the VM name only accepts lowercase alphanumeric with hyphens. These guardrails are built into the template by platowner.
+We name the VM, pick the namespace, choose RHEL 9, set CPU, memory, and disk size. Notice the validation — the VM name only accepts lowercase alphanumeric with hyphens. Memory is a constrained dropdown. These guardrails are baked into the template by platowner.
 
 **[Fill out Page 2 — Access and Purpose]**
 
-Here we set the VM username and optionally paste an SSH public key. And this field — "Business Justification" — is required. This text flows directly into the ServiceNow change request description. Your change managers see exactly what the requestor wrote, just as if they'd filed the CR manually.
+Here we set the VM username and optionally paste an SSH public key. And this field — "Business Justification" — is required. This text flows into the ServiceNow change request. It's a governance control — no justification, no VM.
 
 **[Fill out Page 3 — Review, then click Create]**
 
-Now watch the four steps execute. [PAUSE]
+Now watch. [PAUSE]
 
-Step one — ServiceNow incident created for tracking. Step two — change request created with all the VM parameters in custom fields. Step three — the CR is moved to Assess, which activates the Approve and Reject buttons in your ServiceNow instance. Step four — the SonataFlow orchestrator workflow starts and immediately pauses, waiting for approval.
+Step one — ServiceNow incident created. Step two — change request created with all the VM parameters. Step three — the CR is moved to Assess state. Step four — the SonataFlow orchestrator starts and immediately pauses, waiting for approval.
 
-solnarchitect gets links to the workflow, the incident, and the change request — all from right here. They can click through to ServiceNow if they want to check the CR status, or they can track everything from this portal.
+One form submission. Four coordinated actions across two systems. solnarchitect gets links to track everything — the workflow, the incident, the change request — all from right here in Developer Hub. That's the single pane of glass in action.
 
 ---
 
-## Act 3 — Your Existing Approval Process (1.5 minutes)
+## Act 3 — Governance Built In (1.5 minutes)
 
 **[Open ServiceNow — dev423121.service-now.com]**
 
-Here's the important part for your team. The workflow is paused. Nothing gets provisioned until your change management process is satisfied.
+Here's the governance layer. The workflow is paused. Nothing gets provisioned until approval is granted. This is a guardrail — not optional, not bypassable.
 
 **[Navigate to the Change Request]**
 
-Look at this change request. It looks exactly like any other CR in your ServiceNow instance — because it is one. All the VM parameters are captured in custom fields. The business justification from solnarchitect's form is right here. It's assigned to the Application Development group. State is Assess. Approve and Reject buttons are visible.
-
-Your change managers don't need to learn anything new. They review and approve this CR the same way they review every other change request. [PAUSE]
+The change request is in ServiceNow exactly where your change managers expect it. All the VM parameters are in custom fields. The business justification is here. State is Assess, Approve and Reject are visible. Your change managers work in ServiceNow the way they always do — Developer Hub doesn't change that.
 
 **[Switch to RHDH Orchestrator view as platowner / user2]**
 
-Meanwhile, if we look at the orchestrator in Developer Hub, the workflow shows "Pending Manager Approval." It's in a callback state — not polling. It's waiting for a CloudEvent from ServiceNow.
+Meanwhile, in Developer Hub, the Orchestrator shows the workflow in a "Pending Manager Approval" state. It's a callback — not polling. The workflow will resume only when a CloudEvent arrives from ServiceNow.
 
 **[Go back to ServiceNow and click Approve]**
 
-Now I approve the change request. Behind the scenes, a ServiceNow Business Rule fires and sends a CloudEvent to the SonataFlow callback URL. The workflow resumes automatically. No manual handoff. No second ticket. The approval in ServiceNow directly triggers the provisioning pipeline. [PAUSE]
+I approve the change request. A ServiceNow Business Rule fires a CloudEvent to SonataFlow. The workflow resumes. [PAUSE]
 
-That's the integration — your approval process stays in ServiceNow where it belongs. The automation picks up exactly where your change managers leave off.
+That's the orchestration. The approval happens in ServiceNow. The provisioning is triggered automatically. No one has to copy a ticket number from ServiceNow and paste it into Ansible. No one has to manually start a job. Developer Hub orchestrates the handoff.
 
 ---
 
-## Act 4 — Automated Provisioning (2 minutes)
+## Act 4 — Automated Provisioning with Guardrails (2 minutes)
 
 **[Open AAP — Jobs page, show the running job]**
 
-The workflow has triggered Ansible Automation Platform. Let's watch the provisioning playbook run.
+Ansible Automation Platform is running the provisioning playbook. Let's watch.
 
 **[Walk through the job output]**
 
-Phase one — infrastructure. Ansible generates an ephemeral SSH key pair for bootstrap access. It creates the KubeVirt virtual machine with cloud-init. It waits for the VM to boot. Then it creates the SSH service, the HTTP service, and the OpenShift route with TLS edge termination. And it waits for SSH to become reachable.
+Phase one — infrastructure. Ansible generates an ephemeral SSH key pair for bootstrap access. It creates the KubeVirt virtual machine with cloud-init. It waits for the VM to boot. Then it creates the SSH service, the HTTP service, and the OpenShift route with TLS edge termination.
 
-Phase two — configuration. Ansible SSHes into the VM using that ephemeral key and creates a dedicated service account. Then it hardens the VM — it sets a random 24-character password, locks the root account, removes default sudo access, disables SSH password authentication, disables root login, and restarts sshd. After that, it installs Flask from PyPI, deploys the web application with a systemd service, verifies the app responds on port 80, and grants limited sudo — only systemctl restart and status for the webapp service. Finally, it injects the requestor's SSH public key and removes the bootstrap key. [PAUSE]
+Phase two — configuration and hardening. This is where the security guardrails are enforced. Ansible SSHes into the VM and creates a dedicated service account. Then it locks the VM down — random 24-character password, root account locked, default sudo removed, SSH password authentication disabled, root login disabled. After that, it deploys the Flask application with a systemd service, verifies it responds, and grants the service account limited sudo — only systemctl restart and status for the webapp. Finally, it injects the requestor's SSH key and removes the bootstrap key. [PAUSE]
 
-Let me highlight the security model. There is no password anywhere in the VM spec — cloud-init only has the ephemeral public key. SSH password authentication is disabled. Root is locked. The service account gets least-privilege sudo. And the random password is stored only in AAP job artifacts — invisible to anyone with OpenShift access.
+Let me highlight what platowner has built into this playbook as guardrails. There is no password anywhere in the VM spec — cloud-init only has the ephemeral public key. SSH password authentication is disabled. Root is locked. The service account gets least-privilege sudo — not full admin. The random password is stored only in AAP job artifacts — invisible to anyone with OpenShift access. And the bootstrap key is cleaned up after provisioning.
 
-This runs the same way every time. No manual steps. No configuration drift.
+These security controls are not optional. They're not a checklist someone follows manually. They're enforced by the playbook every single time. That's what a golden path with guardrails means.
 
 ---
 
-## Act 5 — The Result and the Closed Loop (2 minutes)
+## Act 5 — The Single Pane of Glass (2.5 minutes)
 
 **[Navigate to the RHDH catalog — find the new VM entity]**
 
-The workflow has completed. A new Resource entity has appeared in the catalog — registered automatically by the workflow.
+The workflow has completed. Let me show you what Developer Hub looks like now — this is where the single pane of glass really comes together.
+
+A new Resource entity has appeared in the catalog — registered automatically. Nobody had to manually add it.
 
 **[Click into the VM entity page]**
 
-Look at the tabs. Overview shows VM details and links. The Kubernetes tab shows the VirtualMachine and VirtualMachineInstance custom resources live from OpenShift. The Topology tab shows a visual view. And here's what matters for your ServiceNow team — the ServiceNow tab shows the incident record linked to this VM, right inside Developer Hub.
+Look at what's unified in one place. The Overview tab shows VM details and links. The Kubernetes tab shows the VirtualMachine and VirtualMachineInstance custom resources — live from OpenShift. The Topology tab shows a visual view. And the ServiceNow tab shows the incident record linked to this VM. [PAUSE]
+
+Kubernetes data, ServiceNow data, application links — all on one entity page. Before Developer Hub, you'd check the OpenShift console for VM status, ServiceNow for the ticket, and maybe SSH into the box to verify the app. Now it's one page.
 
 **[Click the Application URL link]**
 
@@ -128,51 +134,53 @@ Here's the live Flask app. Hostname, kernel version, uptime, Python version, and
 
 **[Click Access Control]**
 
-This page shows the service account, its allowed sudo commands, and what's denied. Least privilege, enforced by Ansible.
+This page shows the service account, its allowed sudo commands, and what's denied. Visibility into the security posture right from the catalog.
 
 **[Navigate to the parent component — RHEL VM Provisioning Service]**
 
-Now let's see platowner's view. The ServiceNow tab shows all incidents across all VMs — your ServiceNow data surfaced right inside the portal. The Kubernetes tab shows all VMs provisioned by this service. The Workflows tab shows all orchestrator runs. One place for everything.
+Now here's platowner's view — the real single pane of glass. The ServiceNow tab shows all incidents across all VMs — not just this one. The Kubernetes tab shows every VM provisioned by this service. The Workflows tab shows every orchestrator run. One place to see all provisioned assets, all governance records, all workflow history.
 
 **[Show ServiceNow — records auto-closed]**
 
-And here's the closed loop. Back in ServiceNow — the incident is resolved with close notes including the VM name, status, and SSH access details. The change request is closed with close code "successful." Every state transition recorded. [PAUSE]
+And the lifecycle is complete. Back in ServiceNow — the incident is resolved with close notes including the VM name, status, and SSH details. The change request is closed with close code "successful." Every state transition recorded. [PAUSE]
 
-This is what usually takes a manual follow-up — someone remembering to go back and close the ticket after provisioning. Here it happens automatically, with accurate details, the moment the workflow completes.
+The full loop — from request through approval, provisioning, catalog registration, to ServiceNow closure — orchestrated end to end. No manual follow-ups. No stale tickets. The orchestration handles the lifecycle, and the catalog reflects the current state.
 
 ---
 
-## Act 6 — RBAC in Action (1.5 minutes)
+## Act 6 — RBAC — Who Sees What (1.5 minutes)
 
 **[Log in as user1 / solnarchitect]**
 
-Let's talk about access control. This is solnarchitect — the infrastructure solutions architect. Look at the catalog. They see entities owned by the Application Team — their VMs, their resources. They can also see components, templates, systems, and other shared entity types in read-only mode. They can run templates and view their workflow runs.
+Guardrails aren't just about provisioning — they're about visibility too. This is solnarchitect. Look at the catalog. They see entities owned by the Application Team — their VMs, their resources. They see shared kinds — components, templates, systems — in read-only mode. They can run templates and view their workflow runs.
 
 **[Point out what's NOT visible]**
 
-But they cannot access the RBAC admin page. They don't have the orchestrator admin view. They can't delete or manage entities they don't own.
+But they cannot access the RBAC admin page. They don't see the orchestrator admin view. They can't delete or manage entities they don't own. The catalog is scoped to what's relevant to them.
 
 **[Log in as user2 / platowner]**
 
-Now compare with platowner — the platform owner. platowner sees everything. All entities across all teams. The parent component with all ServiceNow tickets, all VMs, all workflow runs. The Orchestrator page shows all workflow instances across all users. And the RBAC page lets platowner manage roles and permissions.
+Now compare with platowner. platowner sees everything. All entities across all teams. The parent component with all ServiceNow tickets, all VMs, all workflow runs. The Orchestrator page shows all workflow instances across all users. And the RBAC page lets platowner manage roles and permissions.
 
 **[Show the RBAC page briefly]**
 
-The role named "developer" gets conditional catalog access — users in that role see entities owned by their group plus all shared kinds. The admin role gets full access. These are enforced at the API level — not just UI filtering. [PAUSE]
+The "developer" role gets conditional catalog access — entities owned by their group plus shared kinds. The "admin" role gets full access. These are enforced at the API level, not just UI filtering. Every plugin respects the same RBAC boundary. [PAUSE]
 
-platowner controls exactly what each team can see and do, and that enforcement is consistent across the UI, the API, and every plugin.
+This is what it means to have a governed portal. platowner controls the golden paths, the guardrails, and the visibility — all from Developer Hub.
 
 ---
 
-## Closing (45 seconds)
+## Closing (1 minute)
 
-Let me recap what you just saw. [PAUSE]
+Let me step back and frame what you just saw. [PAUSE]
 
-An infrastructure solutions architect filled out one form. The platform created ServiceNow records using your existing change management process. A change manager approved the CR in ServiceNow — exactly the way they approve any other change. That approval automatically triggered VM provisioning, application deployment, security hardening, and catalog registration. And when it was done, ServiceNow was updated and closed automatically — the full loop.
+You have ServiceNow, Ansible, and OpenShift. Each one works. But when solnarchitect needs a VM, they're navigating between those systems, and the handoffs between them are manual.
 
-Nothing changed about your ServiceNow process. What changed is that everything after the approval is automated, auditable, and visible in one place. And this pattern extends — databases, middleware, namespaces, any infrastructure service you want to offer as self-service through your existing governance.
+Developer Hub sits on top as the single pane of glass and the orchestration layer. One portal where a solutions architect fills out a form with built-in guardrails. One orchestrated pipeline that coordinates ServiceNow approval, Ansible provisioning, security hardening, and catalog registration — end to end. One catalog where every provisioned asset is visible with its Kubernetes state, its ServiceNow records, and its application health — all in one place. And RBAC that controls who sees what and who can do what across every plugin.
 
-One portal. Your existing ServiceNow. Full automation. Zero friction. [PAUSE]
+The tools don't change. The processes don't change. What Developer Hub adds is the orchestration between them, the catalog that unifies them, and the guardrails that govern them. [PAUSE]
+
+One portal. Full orchestration. Every guardrail in place. Zero friction.
 
 ---
 
@@ -180,15 +188,15 @@ One portal. Your existing ServiceNow. Full automation. Zero friction. [PAUSE]
 
 | Section | Duration |
 |---------|----------|
-| Opening — Problem and Portal | 1:00 |
+| Opening — Problem and Portal | 1:30 |
 | Act 1 — Everything as Code | 2:00 |
 | Act 2 — Self-Service Experience | 2:00 |
-| Act 3 — Your Existing Approval Process | 1:30 |
-| Act 4 — Provisioning | 2:00 |
-| Act 5 — Result and Closed Loop | 2:00 |
+| Act 3 — Governance Built In | 1:30 |
+| Act 4 — Provisioning with Guardrails | 2:00 |
+| Act 5 — Single Pane of Glass | 2:30 |
 | Act 6 — RBAC | 1:30 |
-| Closing | 0:45 |
-| **Total** | **~13 minutes** |
+| Closing | 1:00 |
+| **Total** | **~14 minutes** |
 
 ## Quick Reference — URLs and Credentials
 
